@@ -1,7 +1,6 @@
 package horizon.core.context;
 
 import horizon.core.input.RawInput;
-import horizon.engine.ServerEngine;
 import horizon.engine.ServerEngineTemplate;
 
 import java.util.ArrayList;
