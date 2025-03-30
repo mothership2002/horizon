@@ -1,10 +1,13 @@
 package horizon;
 
-import horizon.engine.HorizonEngineSelector;
+import horizon.core.context.HorizonContextCoordinator;
+import horizon.core.context.NettyEngineContext;
 
 public class HorizonApplication {
 
     public static void main(String[] args) throws Exception {
-        HorizonEngineSelector.select().start(8080);
+        HorizonContextCoordinator coordinator = new HorizonContextCoordinator();
+        coordinator.register(new NettyEngineContext());
+        coordinator.runAll(8080);
     }
 }

@@ -1,6 +1,9 @@
 package horizon.engine;
 
-public interface ServerEngine {
+import horizon.core.context.HorizonContext;
+import horizon.core.input.RawInput;
 
-    void start(int port) throws Exception;
+public interface ServerEngine<T extends RawInput> {
+
+    void run(HorizonContext<T> context, int port) throws Exception;
 }

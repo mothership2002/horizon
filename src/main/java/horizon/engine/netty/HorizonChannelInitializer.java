@@ -1,6 +1,7 @@
 package horizon.engine.netty;
 
-import horizon.core.HorizonContext;
+import horizon.core.context.HorizonContext;
+import horizon.core.input.http.HttpRawInput;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpObjectAggregator;
@@ -8,9 +9,9 @@ import io.netty.handler.codec.http.HttpServerCodec;
 
 public class HorizonChannelInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final HorizonContext context;
+    private final HorizonContext<HttpRawInput> context;
 
-    public HorizonChannelInitializer(HorizonContext context) {
+    public HorizonChannelInitializer(HorizonContext<HttpRawInput> context) {
         this.context = context;
     }
 

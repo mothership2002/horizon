@@ -10,4 +10,6 @@ public abstract class HttpRawInput implements RawInput {
     }
 
     public abstract Object nativeRequest();
+
+    public abstract HttpRequestFacade getRequestFacade();
 }
