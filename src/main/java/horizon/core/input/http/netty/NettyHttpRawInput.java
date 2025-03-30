@@ -1,0 +1,22 @@
+package horizon.core.input.http.netty;
+
+import horizon.core.input.http.HttpRawInput;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.FullHttpRequest;
+
+public class NettyHttpRawInput extends HttpRawInput {
+
+    private final FullHttpRequest request;
+    private final ChannelHandlerContext context;
+
+    public NettyHttpRawInput(FullHttpRequest request, ChannelHandlerContext context) {
+        this.request = request;
+        this.context = context;
+    }
+
+    @Override
+    public Object nativeRequest() {
+        return request;
+    }
+
+}

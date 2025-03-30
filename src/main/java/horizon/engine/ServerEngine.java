@@ -1,5 +1,6 @@
 package horizon.engine;
 
-public interface HorizonEngine {
+public interface ServerEngine {
+
     void start(int port) throws Exception;
 }

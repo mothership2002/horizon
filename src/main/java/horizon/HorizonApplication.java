@@ -1,10 +1,10 @@
 package horizon;
 
-import horizon.engine.netty.HorizonNettyBootstrap;
+import horizon.engine.HorizonEngineSelector;
 
 public class HorizonApplication {
 
-    public static void main(String[] args) throws InterruptedException {
-        new HorizonNettyBootstrap().start(8080);
+    public static void main(String[] args) throws Exception {
+        HorizonEngineSelector.select().start(8080);
     }
 }
