@@ -2,7 +2,7 @@ package horizon.engine.netty;
 
 import horizon.core.context.HorizonContext;
 import horizon.core.input.http.HttpRawInput;
-import horizon.engine.ServerEngineTemplate;
+import horizon.engine.ServerEngine;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -10,7 +10,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HorizonNettyBootstrap extends ServerEngineTemplate<HttpRawInput> {
+public class HorizonNettyBootstrap extends ServerEngine.ServerEngineTemplate<HttpRawInput> {
 
     public static final Logger logger = LoggerFactory.getLogger(HorizonNettyBootstrap.class);
 

@@ -1,6 +1,6 @@
 package horizon.core.interpreter;
 
-import horizon.core.parser.NormalizedInput;
+import horizon.core.parser.normalizer.NormalizedInput;
 
 public interface ProtocolInterpreter {
 

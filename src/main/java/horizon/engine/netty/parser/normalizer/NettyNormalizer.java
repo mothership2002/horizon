@@ -1,9 +1,9 @@
-package horizon.engine.netty.parser;
+package horizon.engine.netty.parser.normalizer;
 
 import horizon.core.input.http.HttpRawInput;
 import horizon.core.input.http.HttpRequestFacade;
-import horizon.core.parser.NormalizedInput;
-import horizon.core.parser.ProtocolNormalizer;
+import horizon.core.parser.normalizer.NormalizedInput;
+import horizon.core.parser.normalizer.ProtocolNormalizer;
 
 public class NettyNormalizer implements ProtocolNormalizer<HttpRawInput> {
 

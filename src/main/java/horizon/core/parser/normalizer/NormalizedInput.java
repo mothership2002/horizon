@@ -1,4 +1,4 @@
-package horizon.core.parser;
+package horizon.core.parser.normalizer;
 
 import horizon.core.input.RawInput;
 

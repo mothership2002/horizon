@@ -1,7 +1,7 @@
 package horizon.core.context;
 
 import horizon.core.input.RawInput;
-import horizon.engine.ServerEngineTemplate;
+import horizon.engine.ServerEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ public class HorizonContextCoordinator {
     }
 
     private <T extends RawInput> void runContext(HorizonContext<T> context, int port) throws Exception {
-        ServerEngineTemplate<T> engine = context.provideEngine();
+        ServerEngine.ServerEngineTemplate<T> engine = context.provideEngine();
         engine.run(context, port);
     }
 }
