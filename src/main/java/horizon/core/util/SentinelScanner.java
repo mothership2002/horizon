@@ -29,7 +29,7 @@ public class SentinelScanner {
         ));
     }
 
-    private static <S extends SentinelInterface, T extends Raw> List<S> scanSentinels(Set<RawInput.Scheme> schemes,
+    private static <S extends SentinelInterface<T>, T extends Raw> List<S> scanSentinels(Set<RawInput.Scheme> schemes,
                                                                                       Sentinel.SentinelDirection directionValue,
                                                                                       Class<S> targetType) {
 

@@ -27,7 +27,7 @@ public class HorizonNettyBootstrap extends ServerEngine.ServerEngineTemplate<Htt
                     .childHandler(new HorizonChannelInitializer(context));
 
             ChannelFuture future = serverBootstrap.bind(port).sync();
-            logger.info("Horizon Engine : Netty");
+            logger.info("Horizon Engine : Netty , listening on port : {}", port);
             future.channel().closeFuture().sync();
         } finally {
             boss.shutdownGracefully();
