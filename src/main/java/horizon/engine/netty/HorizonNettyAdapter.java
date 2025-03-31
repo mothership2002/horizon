@@ -1,15 +1,9 @@
 package horizon.engine.netty;
 
-import horizon.core.broker.BrokerManager;
-import horizon.core.context.HorizonContext;
 import horizon.core.input.http.HttpRawInput;
 import horizon.core.input.http.netty.NettyHttpRawInput;
-import horizon.core.interpreter.ParsedRequest;
-import horizon.core.interpreter.ProtocolInterpreter;
-import horizon.core.output.HorizonRawOutputBuilder;
 import horizon.core.output.RawOutput;
-import horizon.core.parser.NormalizedInput;
-import horizon.core.parser.ProtocolNormalizer;
+import horizon.core.parser.conductor.ProtocolConductor;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -23,24 +17,17 @@ public class HorizonNettyAdapter extends SimpleChannelInboundHandler<FullHttpReq
 
     private static final Logger logger = LoggerFactory.getLogger(HorizonNettyAdapter.class);
 
-    private final ProtocolNormalizer<HttpRawInput> normalizer;
-    private final ProtocolInterpreter interpreter;
-    private final BrokerManager brokerManager;
+    private final ProtocolConductor<HttpRawInput> processor;
 
-    public HorizonNettyAdapter(HorizonContext<HttpRawInput> context) {
-        this.normalizer = context.provideNormalizer();
-        this.brokerManager = context.provideBrokerManager();
-        this.interpreter = context.provideInterpreter();
+    public HorizonNettyAdapter(ProtocolConductor<HttpRawInput> processor) {
+        this.processor = processor;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) throws Exception {
         try {
             HttpRawInput rawInput = new NettyHttpRawInput(request, ctx);
-            NormalizedInput normalized = normalizer.normalize(rawInput);
-            ParsedRequest parsed = interpreter.interpret(normalized);
-            Object result = brokerManager.handle(parsed);
-            RawOutput response = HorizonRawOutputBuilder.build(result);
+            RawOutput response = processor.process(rawInput);
             ctx.writeAndFlush(response);
 
         } catch (Exception e) {

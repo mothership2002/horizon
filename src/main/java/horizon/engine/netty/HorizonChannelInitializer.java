@@ -19,6 +19,6 @@ public class HorizonChannelInitializer extends ChannelInitializer<SocketChannel>
         ch.pipeline()
                 .addLast(new HttpServerCodec())
                 .addLast(new HttpObjectAggregator(65536))
-                .addLast(new HorizonNettyAdapter(context));
+                .addLast(new HorizonNettyAdapter(context.provideProcessor()));
     }
 }
