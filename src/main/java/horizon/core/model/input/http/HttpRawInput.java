@@ -1,6 +1,6 @@
-package horizon.core.input.http;
+package horizon.core.model.input.http;
 
-import horizon.core.input.RawInput;
+import horizon.core.model.input.RawInput;
 
 public abstract class HttpRawInput implements RawInput {
 

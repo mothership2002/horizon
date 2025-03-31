@@ -1,6 +1,6 @@
 package horizon.core.parser.normalizer;
 
-import horizon.core.input.RawInput;
+import horizon.core.model.input.RawInput;
 
 import java.util.Map;
 

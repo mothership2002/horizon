@@ -1,7 +1,7 @@
 package horizon.engine.netty.parser.normalizer;
 
-import horizon.core.input.http.HttpRawInput;
-import horizon.core.input.http.HttpRequestFacade;
+import horizon.core.model.input.http.HttpRawInput;
+import horizon.core.model.input.http.HttpRequestFacade;
 import horizon.core.parser.normalizer.NormalizedInput;
 import horizon.core.parser.normalizer.ProtocolNormalizer;
 

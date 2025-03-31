@@ -1,21 +1,21 @@
 package horizon.core.parser.pipeline;
 
 import horizon.core.broker.BrokerManager;
-import horizon.core.input.RawInput;
+import horizon.core.model.input.RawInput;
 import horizon.core.interpreter.ParsedRequest;
 import horizon.core.interpreter.ProtocolInterpreter;
-import horizon.core.output.HorizonRawOutputBuilder;
-import horizon.core.output.RawOutput;
+import horizon.core.model.output.HorizonRawOutputBuilder;
+import horizon.core.model.output.RawOutput;
 import horizon.core.parser.normalizer.NormalizedInput;
 import horizon.core.parser.normalizer.ProtocolNormalizer;
 
 import java.util.LinkedList;
 import java.util.List;
 
-public class ProtocolPipeline<T extends RawInput> {
+public class ProtocolPipeline<T extends RawInput, S extends RawOutput> {
 
-    private final List<InboundSentinel<T>> inboundSentinels = new LinkedList<>();
-    private final List<OutboundSentinel> outboundSentinels = new LinkedList<>();
+    private final List<SentinelInterface.InboundSentinel<T>> inboundSentinels = new LinkedList<>();
+    private final List<SentinelInterface.OutboundSentinel<S>> outboundSentinels = new LinkedList<>();
 
     private final ProtocolNormalizer<T> normalizer;
     private final ProtocolInterpreter interpreter;
@@ -38,22 +38,20 @@ public class ProtocolPipeline<T extends RawInput> {
     }
 
     protected void preprocess(T rawInput) {
-        for (InboundSentinel<T> s : inboundSentinels) s.onInbound(rawInput);
+        for (SentinelInterface.InboundSentinel<T> s : inboundSentinels) s.onInbound(rawInput);
     }
 
     protected void postprocess(RawOutput output) {
-        for (OutboundSentinel s : outboundSentinels) s.onOutbound(output);
+        for (SentinelInterface.OutboundSentinel<S> s : outboundSentinels) s.onOutbound(output);
     }
 
-    public void addInboundSentinel(InboundSentinel<T> s) {
-        inboundSentinels.add(s);
+    public void addInboundSentinel(SentinelInterface.InboundSentinel<T> sentinel) {
+        inboundSentinels.add(sentinel);
     }
 
-    public void addOutboundSentinel(OutboundSentinel s) {
-        outboundSentinels.add(s);
+    public void addOutboundSentinel(SentinelInterface.OutboundSentinel<S> sentinel) {
+        outboundSentinels.add(sentinel);
     }
 
-    interface SentinelInterface {
 
-    }
 }

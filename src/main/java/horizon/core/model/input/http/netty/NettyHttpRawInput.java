@@ -1,7 +1,7 @@
-package horizon.core.input.http.netty;
+package horizon.core.model.input.http.netty;
 
-import horizon.core.input.http.HttpRawInput;
-import horizon.core.input.http.HttpRequestFacade;
+import horizon.core.model.input.http.HttpRawInput;
+import horizon.core.model.input.http.HttpRequestFacade;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 
