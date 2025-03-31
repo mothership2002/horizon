@@ -3,6 +3,7 @@ package horizon.engine.netty;
 import horizon.core.model.input.http.HttpRawInput;
 import horizon.core.model.input.http.netty.NettyHttpRawInput;
 import horizon.core.model.output.RawOutput;
+import horizon.core.model.output.http.netty.NettyHttpRawOutput;
 import horizon.core.parser.conductor.ProtocolConductor;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -17,18 +18,20 @@ public class HorizonNettyAdapter extends SimpleChannelInboundHandler<FullHttpReq
 
     private static final Logger logger = LoggerFactory.getLogger(HorizonNettyAdapter.class);
 
-    private final ProtocolConductor<HttpRawInput> processor;
+    private final ProtocolConductor<HttpRawInput> conductor;
 
     public HorizonNettyAdapter(ProtocolConductor<HttpRawInput> processor) {
-        this.processor = processor;
+        this.conductor = processor;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) throws Exception {
         try {
             HttpRawInput rawInput = new NettyHttpRawInput(request, ctx);
-            RawOutput response = processor.process(rawInput);
-            ctx.writeAndFlush(response);
+            NettyHttpRawOutput response = (NettyHttpRawOutput) conductor.process(rawInput);
+            ctx.writeAndFlush(response.toNettyResponse()).addListener(future ->
+                ctx.close()
+            );
 
         } catch (Exception e) {
             ctx.writeAndFlush(new DefaultFullHttpResponse(
