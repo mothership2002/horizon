@@ -1,6 +1,7 @@
 package horizon.core.util;
 
 import horizon.core.annotation.HorizonApplication;
+import org.reflections.Reflections;
 
 import java.util.Set;
 
@@ -11,7 +12,7 @@ public class BasePackageScanner {
 
         Set<Class<?>> candidates = reflections.getTypesAnnotatedWith(HorizonApplication.class);
         if (candidates.isEmpty()) {
-            throw new IllegalStateException("@HorizonApplication이 붙은 클래스를 찾을 수 없습니다.");
+            throw new IllegalStateException("@HorizonApplication is not found in any class");
         }
 
         Class<?> baseClass = candidates.iterator().next();

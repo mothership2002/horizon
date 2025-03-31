@@ -1,6 +1,8 @@
-package horizon.core.input;
+package horizon.core.model.input;
 
-public interface RawInput {
+import horizon.core.model.Raw;
+
+public interface RawInput extends Raw {
 
     Scheme getScheme();
     Object nativeRequest();

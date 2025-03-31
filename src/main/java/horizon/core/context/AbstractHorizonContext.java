@@ -1,21 +1,18 @@
 package horizon.core.context;
 
-import horizon.core.input.RawInput;
-import horizon.core.parser.pipeline.InboundSentinel;
-import horizon.core.parser.pipeline.OutboundSentinel;
+import horizon.core.model.input.RawInput;
+import horizon.core.model.output.RawOutput;
 import horizon.core.parser.pipeline.ProtocolPipeline;
+import horizon.core.parser.pipeline.SentinelInterface;
 
 import java.util.List;
 
-public abstract class AbstractHorizonContext<T extends RawInput> implements HorizonContext<T> {
+public abstract class AbstractHorizonContext<T extends RawInput, S extends RawOutput> implements HorizonContext<T, S> {
 
-    abstract ProtocolPipeline<T> initializePipeline();
+    abstract ProtocolPipeline<T, S> initializePipeline();
 
-    protected List<InboundSentinel<T>> scanInboundSentinels() {
-        return null;
-    }
+    protected abstract List<SentinelInterface.InboundSentinel<T>> scanInboundSentinels();
 
-    protected List<OutboundSentinel> scanOutboundSentinels() {
-        return null;
-    }
+    protected abstract List<SentinelInterface.OutboundSentinel<S>> scanOutboundSentinels();
+
 }

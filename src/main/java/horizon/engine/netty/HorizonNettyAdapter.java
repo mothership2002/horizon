@@ -1,8 +1,8 @@
 package horizon.engine.netty;
 
-import horizon.core.input.http.HttpRawInput;
-import horizon.core.input.http.netty.NettyHttpRawInput;
-import horizon.core.output.RawOutput;
+import horizon.core.model.input.http.HttpRawInput;
+import horizon.core.model.input.http.netty.NettyHttpRawInput;
+import horizon.core.model.output.RawOutput;
 import horizon.core.parser.conductor.ProtocolConductor;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;

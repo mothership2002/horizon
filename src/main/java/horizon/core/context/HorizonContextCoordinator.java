@@ -1,6 +1,7 @@
 package horizon.core.context;
 
-import horizon.core.input.RawInput;
+import horizon.core.model.input.RawInput;
+import horizon.core.model.output.RawOutput;
 import horizon.engine.ServerEngine;
 
 import java.util.ArrayList;
@@ -8,20 +9,20 @@ import java.util.List;
 
 public class HorizonContextCoordinator {
 
-    private final List<HorizonContext<? extends RawInput>> contexts = new ArrayList<>();
+    private final List<HorizonContext<? extends RawInput, ? extends RawOutput>> contexts = new ArrayList<>();
 
-    public void register(HorizonContext<? extends RawInput> context) {
+    public void register(HorizonContext<? extends RawInput, ? extends RawOutput> context) {
         contexts.add(context);
     }
 
     public void runAll(int port) throws Exception {
-        for (HorizonContext<? extends RawInput> context : contexts) {
+        for (HorizonContext<? extends RawInput, ? extends RawOutput> context : contexts) {
             runContext(context, port);
         }
     }
 
-    private <T extends RawInput> void runContext(HorizonContext<T> context, int port) throws Exception {
-        ServerEngine.ServerEngineTemplate<T> engine = context.provideEngine();
+    private <T extends RawInput, S extends RawOutput> void runContext(HorizonContext<T, S> context, int port) throws Exception {
+        ServerEngine.ServerEngineTemplate<T, S> engine = context.provideEngine();
         engine.run(context, port);
     }
 }

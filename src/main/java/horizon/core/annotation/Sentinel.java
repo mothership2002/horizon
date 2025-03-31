@@ -1,7 +1,6 @@
 package horizon.core.annotation;
 
-import horizon.core.input.RawInput;
-import horizon.core.parser.pipeline.ProtocolPipeline;
+import horizon.core.model.input.RawInput;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

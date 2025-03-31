@@ -1,4 +1,4 @@
-package horizon.core.input.http;
+package horizon.core.model.input.http;
 
 import io.netty.handler.codec.http.FullHttpRequest;
 
