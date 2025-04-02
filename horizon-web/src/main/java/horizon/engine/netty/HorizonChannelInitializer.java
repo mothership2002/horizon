@@ -1,9 +1,7 @@
 package horizon.engine.netty;
 
 import horizon.core.context.HorizonContext;
-import horizon.protocol.http.input.HttpRawInput;
 import horizon.protocol.http.input.netty.NettyHttpRawInput;
-import horizon.protocol.http.output.HttpRawOutput;
 import horizon.protocol.http.output.netty.NettyHttpRawOutput;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
@@ -22,6 +20,6 @@ public class HorizonChannelInitializer extends ChannelInitializer<SocketChannel>
         ch.pipeline()
                 .addLast(new HttpServerCodec())
                 .addLast(new HttpObjectAggregator(65536))
-                .addLast(new HorizonNettyAdapter(context.provideProcessor()));
+                .addLast(new HorizonNettyAdapter(context.provideFoyer()));
     }
 }

@@ -1,14 +1,14 @@
-package horizon.parser.conductor;
+package horizon.parser.foyer;
 
 import horizon.core.model.output.RawOutput;
 import horizon.parser.pipeline.DefaultProtocolPipeline;
 import horizon.protocol.http.input.HttpRawInput;
 
-public class ServletConductor<T extends HttpRawInput> implements HttpConductor<T> {
+public class ServletFoyer<T extends HttpRawInput> implements HttpFoyer<T> {
 
     private final DefaultProtocolPipeline<T, RawOutput> pipeline;
 
-    public ServletConductor(DefaultProtocolPipeline<T, RawOutput> pipeline) {
+    public ServletFoyer(DefaultProtocolPipeline<T, RawOutput> pipeline) {
         this.pipeline = pipeline;
     }
 

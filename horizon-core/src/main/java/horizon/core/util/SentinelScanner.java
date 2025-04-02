@@ -4,7 +4,7 @@ import horizon.core.annotation.Sentinel;
 import horizon.core.model.Raw;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
-import horizon.core.flow.centinel.SentinelInterface;
+import horizon.core.flow.centinel.FlowSentinelInterface;
 import org.reflections.Reflections;
 
 import java.util.*;
@@ -13,25 +13,25 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unchecked")
 public class SentinelScanner {
 
-    public static <T extends RawInput> List<SentinelInterface.InboundSentinel<T>> scanInbound(Set<RawInput.Scheme> supportedSchemes) {
+    public static <T extends RawInput> List<FlowSentinelInterface.InboundSentinel<T>> scanInbound(Set<RawInput.Scheme> supportedSchemes) {
         return specialize(scanSentinels(
                 supportedSchemes,
                 Sentinel.SentinelDirection.INBOUND,
-                SentinelInterface.InboundSentinel.class
+                FlowSentinelInterface.InboundSentinel.class
         ));
     }
 
-    public static <T extends RawOutput> List<SentinelInterface.OutboundSentinel<T>> scanOutbound(Set<RawInput.Scheme> supportedSchemes) {
+    public static <T extends RawOutput> List<FlowSentinelInterface.OutboundSentinel<T>> scanOutbound(Set<RawInput.Scheme> supportedSchemes) {
         return specialize(scanSentinels(
                 supportedSchemes,
                 Sentinel.SentinelDirection.OUTBOUND,
-                SentinelInterface.OutboundSentinel.class
+                FlowSentinelInterface.OutboundSentinel.class
         ));
     }
 
-    private static <S extends SentinelInterface<T>, T extends Raw> List<S> scanSentinels(Set<RawInput.Scheme> schemes,
-                                                                                      Sentinel.SentinelDirection directionValue,
-                                                                                      Class<S> targetType) {
+    private static <S extends FlowSentinelInterface<T>, T extends Raw> List<S> scanSentinels(Set<RawInput.Scheme> schemes,
+                                                                                             Sentinel.SentinelDirection directionValue,
+                                                                                             Class<S> targetType) {
 
         String basePackage = BasePackageScanner.findBasePackage();
         Reflections reflections = new Reflections(basePackage);

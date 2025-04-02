@@ -4,6 +4,7 @@ import horizon.core.model.input.RawInput;
 
 import java.util.Map;
 
+// 구조 변경 해야 할지도
 public class NormalizedInput {
 
     private final RawInput.Scheme scheme;

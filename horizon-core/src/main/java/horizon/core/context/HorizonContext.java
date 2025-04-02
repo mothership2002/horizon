@@ -1,13 +1,12 @@
 package horizon.core.context;
 
-import horizon.core.flow.broker.BrokerManager;
+import horizon.core.conductor.ConductorManager;
+import horizon.core.flow.parser.foyer.ProtocolFoyer;
+import horizon.core.flow.parser.interpreter.ProtocolInterpreter;
+import horizon.core.flow.parser.normalizer.ProtocolNormalizer;
 import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
-import horizon.core.flow.parser.interpreter.ProtocolInterpreter;
 import horizon.core.model.output.RawOutput;
-import horizon.core.flow.parser.normalizer.ProtocolNormalizer;
-
-import horizon.core.flow.parser.conductor.ProtocolConductor;
 
 public interface HorizonContext<T extends RawInput, S extends RawOutput> {
 
@@ -15,11 +14,11 @@ public interface HorizonContext<T extends RawInput, S extends RawOutput> {
 
     ProtocolInterpreter provideInterpreter();
 
-    BrokerManager provideBrokerManager();
+    ConductorManager provideBrokerManager();
 
     ServerEngine.ServerEngineTemplate<T, S> provideEngine();
 
-    ProtocolConductor<T> provideProcessor();
+    ProtocolFoyer<T> provideFoyer();
 
     RawOutputBuilder<S> provideOutputBuilder();
 }
