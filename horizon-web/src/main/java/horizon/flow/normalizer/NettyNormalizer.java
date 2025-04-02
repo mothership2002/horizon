@@ -1,12 +1,11 @@
-package horizon.parser.normalizer;
+package horizon.flow.normalizer;
 
-import horizon.protocol.http.input.HttpRawInput;
+import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
+import horizon.core.flow.normalizer.NormalizedInput;
 import horizon.protocol.http.HttpRequestFacade;
-import horizon.core.flow.parser.normalizer.NormalizedInput;
-import horizon.core.flow.parser.normalizer.ProtocolNormalizer;
 import horizon.protocol.http.input.netty.NettyHttpRawInput;
 
-public class NettyNormalizer implements ProtocolNormalizer<NettyHttpRawInput> {
+public class NettyNormalizer extends AbstractProtocolNormalizer<NettyHttpRawInput> {
 
     @Override
     public NormalizedInput normalize(NettyHttpRawInput rawInput) {

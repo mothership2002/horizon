@@ -1,24 +1,24 @@
 package horizon.core.context;
 
 import horizon.core.conductor.ConductorManager;
-import horizon.core.flow.parser.foyer.ProtocolFoyer;
-import horizon.core.flow.parser.interpreter.ProtocolInterpreter;
-import horizon.core.flow.parser.normalizer.ProtocolNormalizer;
+import horizon.core.flow.foyer.AbstractProtocolFoyer;
+import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
+import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
 import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
 
-public interface HorizonContext<T extends RawInput, S extends RawOutput> {
+interface HorizonContext<T extends RawInput, S extends RawOutput> {
 
-    ProtocolNormalizer<T> provideNormalizer();
+    AbstractProtocolNormalizer<T> provideNormalizer();
 
-    ProtocolInterpreter provideInterpreter();
+    AbstractProtocolInterpreter provideInterpreter();
 
-    ConductorManager provideBrokerManager();
+    ConductorManager provideConductorManager();
 
     ServerEngine.ServerEngineTemplate<T, S> provideEngine();
 
-    ProtocolFoyer<T> provideFoyer();
+    AbstractProtocolFoyer<T> provideFoyer();
 
     RawOutputBuilder<S> provideOutputBuilder();
 }

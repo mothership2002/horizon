@@ -1,4 +1,4 @@
-package horizon.core.flow.parser.normalizer;
+package horizon.core.flow.normalizer;
 
 import horizon.core.model.input.RawInput;
 

@@ -8,20 +8,20 @@ import java.util.List;
 
 public class HorizonContextCoordinator {
 
-    private final List<HorizonContext<? extends RawInput, ? extends RawOutput>> contexts = new ArrayList<>();
+    private final List<AbstractHorizonContext<? extends RawInput, ? extends RawOutput>> contexts = new ArrayList<>();
 
-    public void register(HorizonContext<? extends RawInput, ? extends RawOutput> context) {
+    public void register(AbstractHorizonContext<? extends RawInput, ? extends RawOutput> context) {
         contexts.add(context);
     }
 
-    public void runAll(int port) throws Exception {
-        for (HorizonContext<? extends RawInput, ? extends RawOutput> context : contexts) {
-            runContext(context, port);
+    public void runAll() throws Exception {
+        for (AbstractHorizonContext<? extends RawInput, ? extends RawOutput> context : contexts) {
+            runContext(context);
         }
     }
 
-    private <T extends RawInput, S extends RawOutput> void runContext(HorizonContext<T, S> context, int port) throws Exception {
+    private <T extends RawInput, S extends RawOutput> void runContext(AbstractHorizonContext<T, S> context) throws Exception {
         ServerEngine.ServerEngineTemplate<T, S> engine = context.provideEngine();
-        engine.run(context, port);
+        engine.run(context);
     }
 }

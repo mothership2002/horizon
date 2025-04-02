@@ -1,10 +1,10 @@
 package horizon.core.conductor;
 
-import horizon.core.flow.parser.interpreter.ParsedRequest;
+import horizon.core.flow.interpreter.ParsedRequest;
 
 public class ConductorManager {
 
-    public Object handle(ParsedRequest request) {
+    public Object conduct(ParsedRequest request) {
         return null;
     }
 }

@@ -1,4 +1,4 @@
 package horizon.core.stage;
 
-interface ShadowStage {
+interface CentralStage {
 }
