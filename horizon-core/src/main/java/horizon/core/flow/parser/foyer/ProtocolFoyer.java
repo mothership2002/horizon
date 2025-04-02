@@ -1,9 +1,9 @@
-package horizon.core.flow.parser.conductor;
+package horizon.core.flow.parser.foyer;
 
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
 
-public interface ProtocolConductor<T extends RawInput> {
+public interface ProtocolFoyer<T extends RawInput> {
 
     RawOutput process(T rawInput);
 

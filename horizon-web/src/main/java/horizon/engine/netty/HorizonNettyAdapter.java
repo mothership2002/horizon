@@ -1,9 +1,8 @@
 package horizon.engine.netty;
 
-import horizon.protocol.http.input.HttpRawInput;
+import horizon.core.flow.parser.foyer.ProtocolFoyer;
 import horizon.protocol.http.input.netty.NettyHttpRawInput;
 import horizon.protocol.http.output.netty.NettyHttpRawOutput;
-import horizon.core.flow.parser.conductor.ProtocolConductor;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
@@ -17,9 +16,9 @@ public class HorizonNettyAdapter extends SimpleChannelInboundHandler<FullHttpReq
 
     private static final Logger logger = LoggerFactory.getLogger(HorizonNettyAdapter.class);
 
-    private final ProtocolConductor<NettyHttpRawInput> conductor;
+    private final ProtocolFoyer<NettyHttpRawInput> conductor;
 
-    public HorizonNettyAdapter(ProtocolConductor<NettyHttpRawInput> processor) {
+    public HorizonNettyAdapter(ProtocolFoyer<NettyHttpRawInput> processor) {
         this.conductor = processor;
     }
 

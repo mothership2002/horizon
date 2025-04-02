@@ -1,21 +1,19 @@
 package horizon.context;
 
-import horizon.core.flow.broker.BrokerManager;
+import horizon.core.conductor.ConductorManager;
 import horizon.core.context.AbstractHorizonContext;
 import horizon.core.context.ServerEngine;
 import horizon.core.flow.parser.interpreter.ProtocolInterpreter;
 import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
 import horizon.protocol.http.NettyRawOutputBuilder;
-import horizon.protocol.http.input.HttpRawInput;
 import horizon.protocol.http.input.netty.NettyHttpRawInput;
-import horizon.protocol.http.output.HttpRawOutput;
-import horizon.core.flow.parser.conductor.ProtocolConductor;
+import horizon.core.flow.parser.foyer.ProtocolFoyer;
 import horizon.core.flow.parser.normalizer.ProtocolNormalizer;
 import horizon.parser.pipeline.DefaultProtocolPipeline;
-import horizon.core.flow.centinel.SentinelInterface;
+import horizon.core.flow.centinel.FlowSentinelInterface;
 import horizon.engine.netty.HorizonNettyBootstrap;
-import horizon.parser.conductor.NettyConductor;
+import horizon.parser.foyer.NettyFoyer;
 import horizon.parser.interpreter.NettyInterpreter;
 import horizon.parser.normalizer.NettyNormalizer;
 import horizon.protocol.http.output.netty.NettyHttpRawOutput;
@@ -39,8 +37,8 @@ public class NettyEngineContext extends AbstractHorizonContext<NettyHttpRawInput
     }
 
     @Override
-    public BrokerManager provideBrokerManager() {
-        return new BrokerManager();
+    public ConductorManager provideBrokerManager() {
+        return new ConductorManager();
     }
 
     @Override
@@ -49,8 +47,8 @@ public class NettyEngineContext extends AbstractHorizonContext<NettyHttpRawInput
     }
 
     @Override
-    public ProtocolConductor<NettyHttpRawInput> provideProcessor() {
-        return new NettyConductor<>(initializePipeline());
+    public ProtocolFoyer<NettyHttpRawInput> provideFoyer() {
+        return new NettyFoyer<>(initializePipeline());
     }
 
     @Override
@@ -68,12 +66,12 @@ public class NettyEngineContext extends AbstractHorizonContext<NettyHttpRawInput
     }
 
     @Override
-    protected List<SentinelInterface.InboundSentinel<NettyHttpRawInput>> scanInboundSentinels() {
+    protected List<FlowSentinelInterface.InboundSentinel<NettyHttpRawInput>> scanInboundSentinels() {
         return scanInbound(Set.of(RawInput.Scheme.http, RawInput.Scheme.https));
     }
 
     @Override
-    protected List<SentinelInterface.OutboundSentinel<NettyHttpRawOutput>> scanOutboundSentinels() {
+    protected List<FlowSentinelInterface.OutboundSentinel<NettyHttpRawOutput>> scanOutboundSentinels() {
         return scanOutbound(Set.of(RawInput.Scheme.http, RawInput.Scheme.https));
     }
 }
