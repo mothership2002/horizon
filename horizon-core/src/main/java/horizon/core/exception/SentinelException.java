@@ -1,4 +1,4 @@
 package horizon.core.exception;
 
-public class SentinelException extends RuntimeException {
+public abstract class SentinelException extends RuntimeException {
 }

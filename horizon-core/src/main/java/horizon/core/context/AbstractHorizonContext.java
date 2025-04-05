@@ -1,18 +1,59 @@
 package horizon.core.context;
 
+import horizon.core.conductor.AbstractConductorManager;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
-import horizon.core.flow.centinel.FlowSentinelInterface;
-import horizon.core.flow.rendezvous.AbstractProtocolRendezvous;
+import horizon.core.stage.AbstractShadowStage;
 
-import java.util.List;
+public abstract class AbstractHorizonContext<I extends RawInput, O extends RawOutput> implements HorizonContext<I, O> {
 
-public abstract class AbstractHorizonContext<T extends RawInput, S extends RawOutput> implements HorizonContext<T, S> {
+    protected final AbstractProtocolContext<I, O> protocolContext;
+    protected final AbstractPresentationContext presentationContext;
+    protected final AbstractExecutionContext executionContext;
+    protected final Properties properties;
 
-    protected abstract AbstractProtocolRendezvous<T, S> initializePipeline();
+    public AbstractHorizonContext(AbstractProtocolContext<I, O> protocolContext, AbstractPresentationContext presentationContext, AbstractExecutionContext executionContext, Properties properties) {
+        this.protocolContext = protocolContext;
+        this.presentationContext = presentationContext;
+        this.executionContext = executionContext;
+        this.properties = properties;
+    }
 
-    protected abstract List<FlowSentinelInterface.InboundSentinel<T>> scanInboundSentinels();
+    public abstract static class AbstractProtocolContext<I extends RawInput, O extends RawOutput> implements ProtocolContext<I, O> {
+        protected AbstractConductorManager conductorManager;
+        protected AbstractShadowStage shadowStage;
 
-    protected abstract List<FlowSentinelInterface.OutboundSentinel<S>> scanOutboundSentinels();
+        public AbstractProtocolContext(AbstractConductorManager conductorManager, AbstractShadowStage shadowStage) {
+            this.conductorManager = conductorManager;
+            this.shadowStage = shadowStage;
+        }
+    }
 
+    public abstract static class AbstractPresentationContext implements PresentationContext {
+
+    }
+
+    public abstract static class AbstractExecutionContext implements ExecutionContext {
+
+    }
+
+    @Override
+    public AbstractProtocolContext<I, O> protocolContext() {
+        return protocolContext;
+    }
+
+    @Override
+    public AbstractExecutionContext executionContext() {
+        return executionContext;
+    }
+
+    @Override
+    public AbstractPresentationContext presentationContext() {
+        return presentationContext;
+    }
+
+    @Override
+    public Properties getProperties() {
+        return properties;
+    }
 }

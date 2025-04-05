@@ -17,7 +17,7 @@ your events are interpreted, orchestrated, and executed with clarity and purpose
 
 - **ProtocolFoyer** – First entry. Where requests are welcomed.
 - **FlowSentinel** – Guards the flow. Runs preprocessing logic.
-- **ProtocolPipeline** – Main processing chain. Connects the flow.
+- **ProtocolRendezvous** – Main processing chain. Connects the flow.
 - **ProtocolNormalizer** – Transforms raw input into structured form.
 - **ProtocolInterpreter** – Decodes meaning. Determines what to trigger.
 - **ConductorManager** – Dispatches to domain-specific performers.

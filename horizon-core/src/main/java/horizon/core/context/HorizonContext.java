@@ -1,24 +1,57 @@
 package horizon.core.context;
 
-import horizon.core.conductor.ConductorManager;
+import horizon.core.conductor.AbstractConductorManager;
+import horizon.core.event.AbstractEventHorizon;
+import horizon.core.flow.centinel.FlowSentinelInterface;
 import horizon.core.flow.foyer.AbstractProtocolFoyer;
 import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
 import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
+import horizon.core.flow.rendezvous.AbstractProtocolRendezvous;
 import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
+import horizon.core.stage.AbstractCentralStage;
+import horizon.core.stage.AbstractShadowStage;
 
-interface HorizonContext<T extends RawInput, S extends RawOutput> {
+import java.util.List;
 
-    AbstractProtocolNormalizer<T> provideNormalizer();
+interface HorizonContext<I extends RawInput, O extends RawOutput> {
 
-    AbstractProtocolInterpreter provideInterpreter();
+    ProtocolContext<I, O> protocolContext();
 
-    ConductorManager provideConductorManager();
+    ExecutionContext executionContext();
 
-    ServerEngine.ServerEngineTemplate<T, S> provideEngine();
+    PresentationContext presentationContext();
 
-    AbstractProtocolFoyer<T> provideFoyer();
+    ServerEngine.ServerEngineTemplate<I, O> provideEngine();
 
-    RawOutputBuilder<S> provideOutputBuilder();
+    Properties getProperties();
+
+    interface ProtocolContext<I extends RawInput, O extends RawOutput> {
+        RawOutputBuilder<O> provideOutputBuilder();
+
+        AbstractProtocolFoyer<I> provideFoyer();
+
+        AbstractProtocolRendezvous<I, O> provideRendezvous();
+
+        List<FlowSentinelInterface.InboundSentinel<I>> scanInboundSentinels();
+
+        List<FlowSentinelInterface.OutboundSentinel<O>> scanOutboundSentinels();
+
+        AbstractProtocolNormalizer<I> provideNormalizer();
+
+        AbstractProtocolInterpreter provideInterpreter();
+    }
+
+    interface PresentationContext {
+        AbstractConductorManager provideConductorManager();
+    }
+
+    interface ExecutionContext {
+        AbstractEventHorizon provideEventHorizon();
+
+        AbstractShadowStage provideShadowStage();
+
+        AbstractCentralStage provideCentralStage();
+    }
 }
