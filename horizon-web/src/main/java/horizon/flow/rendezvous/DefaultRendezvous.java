@@ -1,6 +1,6 @@
 package horizon.flow.rendezvous;
 
-import horizon.core.conductor.ConductorManager;
+import horizon.core.conductor.AbstractConductorManager;
 import horizon.core.flow.centinel.FlowSentinelInterface;
 import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
 import horizon.core.flow.interpreter.ParsedRequest;
@@ -10,6 +10,7 @@ import horizon.core.flow.rendezvous.AbstractProtocolRendezvous;
 import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
+import horizon.core.stage.AbstractShadowStage;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -17,8 +18,8 @@ public class DefaultRendezvous<T extends RawInput, S extends RawOutput> extends 
 
 
     public DefaultRendezvous(AbstractProtocolNormalizer<T> normalizer, AbstractProtocolInterpreter interpreter,
-                             ConductorManager conductorManager, RawOutputBuilder<S> rawOutputBuilder) {
-        super(normalizer, interpreter, conductorManager, rawOutputBuilder);
+                             AbstractConductorManager conductorManager, RawOutputBuilder<S> rawOutputBuilder, AbstractShadowStage shadowStage) {
+        super(normalizer, interpreter, conductorManager, rawOutputBuilder, shadowStage);
     }
 
     @Override
@@ -28,7 +29,6 @@ public class DefaultRendezvous<T extends RawInput, S extends RawOutput> extends 
         ParsedRequest parsed = interpreter.interpret(normalized);
         return CompletableFuture.supplyAsync(() -> afterConduct(parsed));
     }
-
 
     @Override
     public void addInboundSentinel(FlowSentinelInterface.InboundSentinel<T> sentinel) {

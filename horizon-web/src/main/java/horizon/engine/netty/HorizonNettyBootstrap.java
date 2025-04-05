@@ -1,6 +1,6 @@
 package horizon.engine.netty;
 
-import horizon.context.NettyEngineContext;
+import horizon.context.NettyProperties;
 import horizon.core.context.AbstractHorizonContext;
 import horizon.core.context.ServerEngine;
 import horizon.protocol.http.input.netty.NettyHttpRawInput;
@@ -15,23 +15,26 @@ import org.slf4j.LoggerFactory;
 public class HorizonNettyBootstrap extends ServerEngine.ServerEngineTemplate<NettyHttpRawInput, NettyHttpRawOutput> {
 
     public static final Logger logger = LoggerFactory.getLogger(HorizonNettyBootstrap.class);
+    private final AbstractHorizonContext<NettyHttpRawInput, NettyHttpRawOutput> context;
+
+    public HorizonNettyBootstrap(AbstractHorizonContext<NettyHttpRawInput, NettyHttpRawOutput> nettyEngineContext) {
+        this.context = nettyEngineContext;
+    }
 
     @Override
     protected void doStart(AbstractHorizonContext<NettyHttpRawInput, NettyHttpRawOutput> context) throws Exception {
-        NettyEngineContext nettyEngineContext = (NettyEngineContext) context;
-        int port = getPort(nettyEngineContext);
+        NettyProperties props = (NettyProperties) context.getProperties();
 
-        int eventLoopGroupSize = nettyEngineContext.getEventLoopGroupSize();
-        int workerThreadSize = nettyEngineContext.getWorkerThreadSize();
+        NioEventLoopGroup boss = new NioEventLoopGroup(props.getEventLoopGroupSize());
+        NioEventLoopGroup worker = new NioEventLoopGroup(props.getWorkerThreadSize());
 
-        NioEventLoopGroup boss = new NioEventLoopGroup(eventLoopGroupSize);
-        NioEventLoopGroup worker = new NioEventLoopGroup(workerThreadSize);
+        int port = props.getPort();
 
         try {
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(boss, worker)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(new HorizonChannelInitializer(nettyEngineContext));
+                    .childHandler(new HorizonChannelInitializer(this.context));
 
             ChannelFuture future = serverBootstrap.bind(port).sync();
             logger.info("Horizon Engine : Netty , listening on port : {}", port);
@@ -42,7 +45,7 @@ public class HorizonNettyBootstrap extends ServerEngine.ServerEngineTemplate<Net
         }
     }
 
-    private int getPort(NettyEngineContext nettyEngineContext) {
-        return nettyEngineContext.getPort() == null ? 8080 : nettyEngineContext.getPort();
+    private int getPort(NettyProperties nettyEngineContext) {
+        return nettyEngineContext.getPort();
     }
 }
