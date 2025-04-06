@@ -5,7 +5,13 @@ import horizon.core.event.AbstractEventHorizon;
 import horizon.core.stage.AbstractCentralStage;
 import horizon.core.stage.AbstractShadowStage;
 
+import java.util.concurrent.ExecutorService;
+
 public class DefaultExecutionContext extends AbstractHorizonContext.AbstractExecutionContext {
+
+    public DefaultExecutionContext(ExecutorService eventExecutor) {
+        super(eventExecutor);
+    }
 
     @Override
     public AbstractEventHorizon provideEventHorizon() {

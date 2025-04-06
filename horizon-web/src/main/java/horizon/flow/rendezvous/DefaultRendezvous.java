@@ -15,30 +15,37 @@ import horizon.core.stage.AbstractShadowStage;
 import horizon.core.util.SentinelScanner;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
-public class DefaultRendezvous<T extends RawInput, S extends RawOutput> extends AbstractProtocolRendezvous<T, S> {
+public class DefaultRendezvous<I extends RawInput, O extends RawOutput> extends AbstractProtocolRendezvous<I, O> {
 
 
-    public DefaultRendezvous(AbstractProtocolNormalizer<T> normalizer, AbstractProtocolInterpreter interpreter,
-                             AbstractConductorManager conductorManager, RawOutputBuilder<S> rawOutputBuilder, AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner sentinelScanner) {
-        super(normalizer, interpreter, conductorManager, rawOutputBuilder, shadowStage, scheme, sentinelScanner);
+    public DefaultRendezvous(AbstractProtocolNormalizer<I> normalizer, AbstractProtocolInterpreter interpreter,
+                             AbstractConductorManager conductorManager, RawOutputBuilder<O> rawOutputBuilder,
+                             AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner sentinelScanner, ExecutorService rendezvousExecutor) {
+        super(normalizer, interpreter, conductorManager, rawOutputBuilder, shadowStage, scheme, sentinelScanner, rendezvousExecutor);
     }
 
     @Override
-    public CompletableFuture<S> encounter(T rawInput) {
-        preInspect(rawInput);
-        NormalizedInput normalized = normalizer.normalize(rawInput);
-        ParsedRequest parsed = interpreter.interpret(normalized);
-        return CompletableFuture.supplyAsync(() -> afterConduct(parsed));
+    public CompletableFuture<O> encounter(I rawInput) {
+        return CompletableFuture.supplyAsync(() -> {
+            preInspect(rawInput);
+            NormalizedInput normalized = normalizer.normalize(rawInput);
+            ParsedRequest parsed = interpreter.interpret(normalized);
+            Object result = conductorManager.conduct(parsed);
+            O output = rawOutputBuilder.build(result);
+            postInspect(output);
+            return output;
+        }, rendezvousExecutor);
     }
 
     @Override
-    public void addInboundSentinel(FlowSentinel.InboundSentinel<T> sentinel) {
+    public void addInboundSentinel(FlowSentinel.InboundSentinel<I> sentinel) {
         inboundSentinels.add(sentinel);
     }
 
     @Override
-    public void addOutboundSentinel(FlowSentinel.OutboundSentinel<S> sentinel) {
+    public void addOutboundSentinel(FlowSentinel.OutboundSentinel<O> sentinel) {
         outboundSentinels.add(sentinel);
     }
 

@@ -8,6 +8,7 @@ import horizon.core.annotation.HorizonApplication;
 import horizon.core.constant.Scheme;
 import horizon.core.context.AbstractHorizonContext;
 import horizon.core.context.HorizonContextCoordinator;
+import horizon.core.executor.HorizonThreadPoolProvider;
 import horizon.core.util.HorizonContextBuilder;
 import horizon.core.util.SentinelScanner;
 import horizon.data.context.DefaultExecutionContext;
@@ -18,12 +19,16 @@ import horizon.protocol.http.output.netty.NettyHttpRawOutput;
 public class HorizonApplicationDemo {
 
     public static void main(String[] args) throws Exception {
+
+        HorizonThreadPoolProvider threadPoolProvider = new HorizonThreadPoolProvider();
+
         HorizonContextCoordinator coordinator = new HorizonContextCoordinator();
-        DefaultExecutionContext execution = new DefaultExecutionContext();
-        DefaultPresentationContext presentation = new DefaultPresentationContext();
+        DefaultExecutionContext execution = new DefaultExecutionContext(threadPoolProvider.stage());
+        DefaultPresentationContext presentation = new DefaultPresentationContext(threadPoolProvider.conductor());
         SentinelScanner sentinelScanner = SentinelScanner.auto();
+
         AbstractHorizonContext.AbstractProtocolContext<NettyHttpRawInput, NettyHttpRawOutput> protocol
-                = new NettyProtocolContext(presentation.provideConductorManager(), execution.provideShadowStage(), Scheme.http, sentinelScanner);
+                = new NettyProtocolContext(presentation.provideConductorManager(), execution.provideShadowStage(), Scheme.http, sentinelScanner, threadPoolProvider.rendezvous());
 
         NettyProperties properties = NettyProperties.builder().build();
 

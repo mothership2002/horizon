@@ -2,15 +2,14 @@ package horizon.core.context;
 
 import horizon.core.constant.Scheme;
 import horizon.core.flow.foyer.AbstractProtocolFoyer;
-import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
-import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
-import horizon.core.flow.rendezvous.AbstractProtocolRendezvous;
 import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
 import horizon.core.util.SentinelScanner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ExecutorService;
 
 public abstract class AbstractHorizonContext<I extends RawInput, O extends RawOutput> implements HorizonContext<I, O> {
 
@@ -49,14 +48,19 @@ public abstract class AbstractHorizonContext<I extends RawInput, O extends RawOu
     }
 
     public abstract static class AbstractPresentationContext implements PresentationContext {
+        protected final ExecutorService conductorExecutor;
 
-        public AbstractPresentationContext() {
+        public AbstractPresentationContext(ExecutorService conductorExecutor) {
+            this.conductorExecutor = conductorExecutor;
             log.info("Initializing PresentationContext : {}", getClass().getSimpleName());
         }
     }
 
     public abstract static class AbstractExecutionContext implements ExecutionContext {
-        public AbstractExecutionContext() {
+        protected final ExecutorService centinelExecutor;
+
+        public AbstractExecutionContext(ExecutorService centinelExecutor) {
+            this.centinelExecutor = centinelExecutor;
             log.info("Initializing ExecutionContext : {}", getClass().getSimpleName());
         }
     }

@@ -15,12 +15,13 @@ import horizon.protocol.http.NettyRawOutputBuilder;
 import horizon.protocol.http.input.netty.NettyHttpRawInput;
 import horizon.protocol.http.output.netty.NettyHttpRawOutput;
 
+import java.util.concurrent.ExecutorService;
+
 public class NettyProtocolContext extends AbstractHorizonContext.AbstractProtocolContext<NettyHttpRawInput, NettyHttpRawOutput> {
 
     public NettyProtocolContext(AbstractConductorManager conductorManager, AbstractShadowStage shadowStage,
-                                Scheme scheme, SentinelScanner scanner) {
-
-        super(createRawOutputBuilder(), createFoyer(conductorManager, shadowStage, scheme, scanner));
+                                Scheme scheme, SentinelScanner scanner, ExecutorService rendezvousExecutor) {
+        super(createRawOutputBuilder(), createFoyer(conductorManager, shadowStage, scheme, scanner, rendezvousExecutor));
     }
 
     @Override
@@ -45,14 +46,22 @@ public class NettyProtocolContext extends AbstractHorizonContext.AbstractProtoco
         return new NettyInterpreter();
     }
 
-    private static DefaultRendezvous<NettyHttpRawInput, NettyHttpRawOutput> createRendezvous(AbstractConductorManager conductorManager, AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner scanner) {
+    private static DefaultRendezvous<NettyHttpRawInput, NettyHttpRawOutput> createRendezvous(AbstractConductorManager conductorManager,
+                                                                                             AbstractShadowStage shadowStage,
+                                                                                             Scheme scheme,
+                                                                                             SentinelScanner scanner,
+                                                                                             ExecutorService rendezvousExecutor) {
         NettyNormalizer normalizer = createNormalizer();
         NettyInterpreter interpreter = createInterpreter();
         NettyRawOutputBuilder outputBuilder = createRawOutputBuilder();
-        return new DefaultRendezvous<>(normalizer, interpreter, conductorManager, outputBuilder, shadowStage, scheme, scanner);
+        return new DefaultRendezvous<>(normalizer, interpreter, conductorManager, outputBuilder, shadowStage, scheme, scanner, rendezvousExecutor);
     }
 
-    private static NettyFoyer<NettyHttpRawInput> createFoyer(AbstractConductorManager conductorManager, AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner scanner) {
-        return new NettyFoyer<>(createRendezvous(conductorManager, shadowStage, scheme, scanner));
+    private static NettyFoyer<NettyHttpRawInput> createFoyer(AbstractConductorManager conductorManager,
+                                                             AbstractShadowStage shadowStage,
+                                                             Scheme scheme,
+                                                             SentinelScanner scanner,
+                                                             ExecutorService rendezvousExecutor) {
+        return new NettyFoyer<>(createRendezvous(conductorManager, shadowStage, scheme, scanner, rendezvousExecutor));
     }
 }
