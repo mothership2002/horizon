@@ -23,6 +23,19 @@ public abstract class AbstractHorizonContext<I extends RawInput, O extends RawOu
     protected final Scheme scheme;
     protected final SentinelScanner sentinelScanner;
 
+    /**
+     * Constructs a new AbstractHorizonContext with the provided context components and configuration settings.
+     *
+     * <p>This constructor initializes the protocol, presentation, and execution contexts along with additional
+     * configuration properties, a scheme, and a sentinel scanner. It also logs the initialization of the Horizon context instance.
+     *
+     * @param protocolContext the context managing protocol-related operations
+     * @param presentationContext the context managing presentation-related tasks
+     * @param executionContext the context managing execution-related operations
+     * @param properties the configuration properties for the context
+     * @param scheme the scheme defining the context's operational configuration
+     * @param sentinelScanner the scanner used for sentinel detection and related validations
+     */
     public AbstractHorizonContext(AbstractProtocolContext<I, O> protocolContext, AbstractPresentationContext presentationContext,
                                   AbstractExecutionContext executionContext, Properties properties, Scheme scheme, SentinelScanner sentinelScanner) {
         this.protocolContext = protocolContext;
@@ -39,6 +52,12 @@ public abstract class AbstractHorizonContext<I extends RawInput, O extends RawOu
         protected final RawOutputBuilder<O> rawOutputBuilder;
         protected final AbstractProtocolFoyer<I> foyer;
 
+        /**
+         * Initializes a new ProtocolContext with the specified raw output builder and protocol foyer.
+         *
+         * @param rawOutputBuilder the builder used to construct the raw protocol output
+         * @param foyer the protocol foyer responsible for handling protocol entry points
+         */
         public AbstractProtocolContext(RawOutputBuilder<O> rawOutputBuilder,
                                        AbstractProtocolFoyer<I> foyer) {
 
@@ -50,17 +69,33 @@ public abstract class AbstractHorizonContext<I extends RawInput, O extends RawOu
 
     public abstract static class AbstractPresentationContext implements PresentationContext {
 
+        /**
+         * Initializes a new AbstractPresentationContext.
+         *
+         * <p>This constructor logs the initialization of the presentation context using its class's simple name.</p>
+         */
         public AbstractPresentationContext() {
             log.info("Initializing PresentationContext : {}", getClass().getSimpleName());
         }
     }
 
     public abstract static class AbstractExecutionContext implements ExecutionContext {
+        /**
+         * Instantiates an AbstractExecutionContext and logs its initialization.
+         *
+         * <p>This constructor logs an informational message indicating that an ExecutionContext is being initialized,
+         * using the simple name of the current class.</p>
+         */
         public AbstractExecutionContext() {
             log.info("Initializing ExecutionContext : {}", getClass().getSimpleName());
         }
     }
 
+    /**
+     * Retrieves the protocol context component responsible for protocol-specific operations.
+     *
+     * @return the protocol context instance
+     */
     @Override
     public AbstractProtocolContext<I, O> protocolContext() {
         return protocolContext;

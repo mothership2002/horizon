@@ -10,9 +10,31 @@ import java.util.concurrent.CompletableFuture;
 
 interface ProtocolRendezvous<T extends RawInput, S extends RawOutput> {
 
-    CompletableFuture<S> encounter(T rawInput);
+    /**
+ * Processes the provided raw input asynchronously.
+ *
+ * <p>This method initiates the asynchronous processing of the given raw input and returns a
+ * CompletableFuture that will eventually complete with its corresponding raw output.</p>
+ *
+ * @param rawInput the raw input data to be processed
+ * @return a CompletableFuture that will complete with the processed raw output
+ */
+CompletableFuture<S> encounter(T rawInput);
 
-    void addInboundSentinel(FlowSentinel.InboundSentinel<T> sentinel);
+    /**
+ * Registers an inbound sentinel for intercepting and processing incoming raw input.
+ *
+ * <p>The provided sentinel enables additional validation, transformation, or filtering of raw input
+ * before it is further handled by the protocol.
+ *
+ * @param sentinel the inbound sentinel to register
+ */
+void addInboundSentinel(FlowSentinel.InboundSentinel<T> sentinel);
 
-    void addOutboundSentinel(FlowSentinel.OutboundSentinel<S> sentinel);
+    /**
+ * Registers an outbound sentinel to process and validate outbound raw output data.
+ *
+ * @param sentinel the outbound sentinel to add for handling output data elements of type S
+ */
+void addOutboundSentinel(FlowSentinel.OutboundSentinel<S> sentinel);
 }

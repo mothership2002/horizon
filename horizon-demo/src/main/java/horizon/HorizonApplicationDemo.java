@@ -17,6 +17,17 @@ import horizon.protocol.http.output.netty.NettyHttpRawOutput;
 @HorizonApplication
 public class HorizonApplicationDemo {
 
+    /**
+     * Main entry point for launching the Horizon application.
+     *
+     * <p>This method initializes the core contexts required for the application, including the execution,
+     * presentation, and protocol contexts configured for HTTP communication via Netty. It also builds the
+     * Netty properties and registers the constructed context with the HorizonContextCoordinator to start
+     * the application. Future enhancements may include support for a multi-protocol server.
+     *
+     * @param args command-line arguments (not used)
+     * @throws Exception if an error occurs during initialization
+     */
     public static void main(String[] args) throws Exception {
         HorizonContextCoordinator coordinator = new HorizonContextCoordinator();
         DefaultExecutionContext execution = new DefaultExecutionContext();

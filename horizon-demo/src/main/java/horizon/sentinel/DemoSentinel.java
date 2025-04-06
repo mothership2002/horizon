@@ -20,6 +20,12 @@ public class DemoSentinel {
     @Sentinel(direction = Sentinel.SentinelDirection.INBOUND, order = 1, scheme = Scheme.http)
     public static class DemoInboundSentinel<I extends RawInput> extends AbstractInboundSentinel<I> {
 
+        /**
+         * Inspects inbound data by logging an informational message.
+         *
+         * @param rawInput the raw inbound data to be processed
+         * @throws InboundSentinelException if an error occurs during the inspection of inbound data
+         */
         @Override
         public void inspectInbound(I rawInput) throws InboundSentinelException {
             logger.info("inbound sentinel");
@@ -29,6 +35,15 @@ public class DemoSentinel {
     @Sentinel(direction = Sentinel.SentinelDirection.OUTBOUND, order = 1, scheme = Scheme.http)
     public static class DemoOutboundSentinel<O extends RawOutput> extends AbstractOutboundSentinel<O> {
 
+        /**
+         * Inspects the outbound data.
+         *
+         * <p>This method logs a message indicating that outbound data is being processed. It is part of the outbound
+         * sentinel implementation and may throw an {@code OutboundSentinelException} if inspection fails.</p>
+         *
+         * @param rawOutput the outbound data to inspect
+         * @throws OutboundSentinelException if an error occurs during outbound data inspection
+         */
         @Override
         public void inspectOutbound(O rawOutput) throws OutboundSentinelException {
             logger.info("outbound sentinel");
@@ -38,11 +53,29 @@ public class DemoSentinel {
     @Sentinel(direction = Sentinel.SentinelDirection.BOTH, order = 0, scheme = Scheme.http)
     public static class DemoBothSentinel<I extends RawInput, O extends RawOutput> extends AbstractSentinel<I, O> {
 
+        /**
+         * Processes outbound data by logging that the dual-direction sentinel is handling outbound traffic.
+         *
+         * <p>This method is part of a sentinel that inspects both inbound and outbound data. It logs an informational
+         * message to indicate that outbound data has been processed.</p>
+         *
+         * @param rawOutput the outbound data to inspect
+         * @throws OutboundSentinelException if an error occurs during outbound data inspection
+         */
         @Override
         public void inspectOutbound(O rawOutput) throws OutboundSentinelException {
             logger.info("both sentinel");
         }
 
+        /**
+         * Inspects inbound data as part of the dual-mode sentinel operation.
+         *
+         * <p>This method processes inbound data, logging an informational message to indicate that the inbound branch
+         * of the sentinel has been activated.
+         *
+         * @param rawInput the inbound data to inspect
+         * @throws InboundSentinelException if an error occurs during inbound data inspection
+         */
         @Override
         public void inspectInbound(I rawInput) throws InboundSentinelException {
             logger.info("both sentinel");
