@@ -1,5 +1,6 @@
 package horizon.core.flow.normalizer;
 
+import horizon.core.constant.Scheme;
 import horizon.core.model.input.RawInput;
 
 import java.util.Map;
@@ -7,7 +8,7 @@ import java.util.Map;
 // 구조 변경 해야 할지도
 public class NormalizedInput {
 
-    private final RawInput.Scheme scheme;
+    private final Scheme scheme;
     private final String method;
     private final String path;
     private final Map<String, String> headers;
@@ -15,7 +16,7 @@ public class NormalizedInput {
     private final Object body;
     private final Object rawReference;
 
-    public NormalizedInput(RawInput.Scheme scheme, String method, String path, Map<String, String> headers, Map<String, String> queryParams, Object body, Object rawReference) {
+    public NormalizedInput(Scheme scheme, String method, String path, Map<String, String> headers, Map<String, String> queryParams, Object body, Object rawReference) {
         this.scheme = scheme;
         this.method = method;
         this.path = path;

@@ -1,5 +1,6 @@
 package horizon.protocol.http.input;
 
+import horizon.core.constant.Scheme;
 import horizon.core.model.input.RawInput;
 import horizon.protocol.http.HttpRequestFacade;
 

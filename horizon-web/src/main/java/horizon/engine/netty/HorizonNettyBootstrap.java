@@ -15,10 +15,9 @@ import org.slf4j.LoggerFactory;
 public class HorizonNettyBootstrap extends ServerEngine.ServerEngineTemplate<NettyHttpRawInput, NettyHttpRawOutput> {
 
     public static final Logger logger = LoggerFactory.getLogger(HorizonNettyBootstrap.class);
-    private final AbstractHorizonContext<NettyHttpRawInput, NettyHttpRawOutput> context;
 
     public HorizonNettyBootstrap(AbstractHorizonContext<NettyHttpRawInput, NettyHttpRawOutput> nettyEngineContext) {
-        this.context = nettyEngineContext;
+        super(nettyEngineContext);
     }
 
     @Override
@@ -45,7 +44,5 @@ public class HorizonNettyBootstrap extends ServerEngine.ServerEngineTemplate<Net
         }
     }
 
-    private int getPort(NettyProperties nettyEngineContext) {
-        return nettyEngineContext.getPort();
-    }
+
 }

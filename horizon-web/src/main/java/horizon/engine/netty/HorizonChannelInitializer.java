@@ -20,18 +20,29 @@ public class HorizonChannelInitializer extends ChannelInitializer<SocketChannel>
 
     protected void initChannel(SocketChannel ch) {
         NettyProperties nettyContext = (NettyProperties) context.getProperties();
+
+        ch.pipeline()
+                .addLast(getIdleStateHandler(nettyContext))
+                .addLast(getHttpServerCodec(nettyContext))
+                .addLast(getHttpObjectAggregator(nettyContext))
+                .addLast(new HorizonNettyAdapter(context.protocolContext().provideFoyer()));
+    }
+
+    private HttpObjectAggregator getHttpObjectAggregator(NettyProperties nettyContext) {
+        return new HttpObjectAggregator(nettyContext.getMaxContentLength());
+    }
+
+    private IdleStateHandler getIdleStateHandler(NettyProperties nettyContext) {
         int readTimeoutSeconds = nettyContext.getReadTimeoutMillis() / 1000;
         int writeTimeoutSeconds = nettyContext.getWriteTimeoutMillis() / 1000;
         int allIdleTimeSeconds = nettyContext.getAllIdleTimeMillis() / 1000;
-        int maxContentLength = nettyContext.getMaxContentLength();
+        return new IdleStateHandler(readTimeoutSeconds, writeTimeoutSeconds, allIdleTimeSeconds);
+    }
+
+    private HttpServerCodec getHttpServerCodec(NettyProperties nettyContext) {
         int maxInitialLineLength = nettyContext.getMaxInitialLineLength();
         int maxHeaderSize = nettyContext.getMaxHeaderSize();
         int maxChunkSize = nettyContext.getMaxChunkSize();
-
-        ch.pipeline()
-                .addLast(new IdleStateHandler(readTimeoutSeconds, writeTimeoutSeconds, allIdleTimeSeconds))
-                .addLast(new HttpServerCodec(maxInitialLineLength, maxHeaderSize, maxChunkSize))
-                .addLast(new HttpObjectAggregator(maxContentLength))
-                .addLast(new HorizonNettyAdapter(context.protocolContext().provideFoyer()));
+        return new HttpServerCodec(maxInitialLineLength, maxHeaderSize, maxChunkSize);
     }
 }

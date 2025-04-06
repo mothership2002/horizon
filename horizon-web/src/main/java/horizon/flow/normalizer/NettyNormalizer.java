@@ -7,6 +7,10 @@ import horizon.protocol.http.input.netty.NettyHttpRawInput;
 
 public class NettyNormalizer extends AbstractProtocolNormalizer<NettyHttpRawInput> {
 
+    public NettyNormalizer() {
+        super();
+    }
+
     @Override
     public NormalizedInput normalize(NettyHttpRawInput rawInput) {
         HttpRequestFacade request = rawInput.getRequestFacade();

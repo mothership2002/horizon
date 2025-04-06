@@ -6,6 +6,10 @@ import horizon.core.flow.normalizer.NormalizedInput;
 
 public class NettyInterpreter extends AbstractProtocolInterpreter {
 
+    public NettyInterpreter() {
+        super();
+    }
+
     @Override
     public ParsedRequest interpret(NormalizedInput normalizedInput) {
         return null;

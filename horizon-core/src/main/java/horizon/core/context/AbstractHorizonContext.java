@@ -1,40 +1,64 @@
 package horizon.core.context;
 
-import horizon.core.conductor.AbstractConductorManager;
+import horizon.core.constant.Scheme;
+import horizon.core.flow.foyer.AbstractProtocolFoyer;
+import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
+import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
+import horizon.core.flow.rendezvous.AbstractProtocolRendezvous;
+import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
-import horizon.core.stage.AbstractShadowStage;
+import horizon.core.util.SentinelScanner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractHorizonContext<I extends RawInput, O extends RawOutput> implements HorizonContext<I, O> {
+
+    private final static Logger log = LoggerFactory.getLogger(AbstractHorizonContext.class);
 
     protected final AbstractProtocolContext<I, O> protocolContext;
     protected final AbstractPresentationContext presentationContext;
     protected final AbstractExecutionContext executionContext;
     protected final Properties properties;
+    protected final Scheme scheme;
+    protected final SentinelScanner sentinelScanner;
 
-    public AbstractHorizonContext(AbstractProtocolContext<I, O> protocolContext, AbstractPresentationContext presentationContext, AbstractExecutionContext executionContext, Properties properties) {
+    public AbstractHorizonContext(AbstractProtocolContext<I, O> protocolContext, AbstractPresentationContext presentationContext,
+                                  AbstractExecutionContext executionContext, Properties properties, Scheme scheme, SentinelScanner sentinelScanner) {
         this.protocolContext = protocolContext;
         this.presentationContext = presentationContext;
         this.executionContext = executionContext;
         this.properties = properties;
+        this.scheme = scheme;
+        this.sentinelScanner = sentinelScanner;
+        log.info("Initializing HorizonContext : {}", getClass().getSimpleName());
     }
 
     public abstract static class AbstractProtocolContext<I extends RawInput, O extends RawOutput> implements ProtocolContext<I, O> {
-        protected AbstractConductorManager conductorManager;
-        protected AbstractShadowStage shadowStage;
 
-        public AbstractProtocolContext(AbstractConductorManager conductorManager, AbstractShadowStage shadowStage) {
-            this.conductorManager = conductorManager;
-            this.shadowStage = shadowStage;
+        protected final RawOutputBuilder<O> rawOutputBuilder;
+        protected final AbstractProtocolFoyer<I> foyer;
+
+        public AbstractProtocolContext(RawOutputBuilder<O> rawOutputBuilder,
+                                       AbstractProtocolFoyer<I> foyer) {
+
+            this.rawOutputBuilder = rawOutputBuilder;
+            this.foyer = foyer;
+            log.info("Initializing ProtocolContext : {}", getClass().getSimpleName());
         }
     }
 
     public abstract static class AbstractPresentationContext implements PresentationContext {
 
+        public AbstractPresentationContext() {
+            log.info("Initializing PresentationContext : {}", getClass().getSimpleName());
+        }
     }
 
     public abstract static class AbstractExecutionContext implements ExecutionContext {
-
+        public AbstractExecutionContext() {
+            log.info("Initializing ExecutionContext : {}", getClass().getSimpleName());
+        }
     }
 
     @Override
