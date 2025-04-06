@@ -20,12 +20,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 @SuppressWarnings("unchecked")
 public abstract class AbstractProtocolRendezvous<I extends RawInput, O extends RawOutput> implements ProtocolRendezvous<I, O> {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractProtocolRendezvous.class);
 
+    protected final ExecutorService rendezvousExecutor;
     protected final List<FlowSentinel.InboundSentinel<I>> inboundSentinels = new LinkedList<>();
     protected final List<FlowSentinel.OutboundSentinel<O>> outboundSentinels = new LinkedList<>();
 
@@ -37,22 +39,16 @@ public abstract class AbstractProtocolRendezvous<I extends RawInput, O extends R
 
     public AbstractProtocolRendezvous(AbstractProtocolNormalizer<I> normalizer, AbstractProtocolInterpreter interpreter,
                                       AbstractConductorManager conductorManager, RawOutputBuilder<O> rawOutputBuilder,
-                                      AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner sentinelScanner) {
+                                      AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner sentinelScanner, ExecutorService rendezvousExecutor) {
         this.normalizer = normalizer;
         this.interpreter = interpreter;
         this.conductorManager = conductorManager;
         this.rawOutputBuilder = rawOutputBuilder;
         this.shadowStage = shadowStage;
+        this.rendezvousExecutor = rendezvousExecutor;
         sentinelScanner.getInboundSentinels(scheme.name()).forEach(s -> inboundSentinels.add((FlowSentinel.InboundSentinel<I>) s));
         sentinelScanner.getOutboundSentinels(scheme.name()).forEach(s -> outboundSentinels.add((FlowSentinel.OutboundSentinel<O>) s));
         log.info("Creating protocol rendezvous : {}", getClass().getSimpleName());
-    }
-
-    protected O afterConduct(ParsedRequest parsed) {
-        Object result = conductorManager.conduct(parsed);
-        O output = rawOutputBuilder.build(result);
-        postInspect(output);
-        return output;
     }
 
     protected void preInspect(I rawInput) {
