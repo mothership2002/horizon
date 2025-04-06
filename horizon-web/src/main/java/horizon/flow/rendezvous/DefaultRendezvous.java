@@ -2,8 +2,6 @@ package horizon.flow.rendezvous;
 
 import horizon.core.conductor.AbstractConductorManager;
 import horizon.core.constant.Scheme;
-import horizon.core.flow.sentinel.AbstractInboundSentinel;
-import horizon.core.flow.sentinel.AbstractOutboundSentinel;
 import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
 import horizon.core.flow.interpreter.ParsedRequest;
 import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
