@@ -35,6 +35,21 @@ public abstract class AbstractProtocolRendezvous<I extends RawInput, O extends R
     protected final RawOutputBuilder<O> rawOutputBuilder;
     protected final AbstractShadowStage shadowStage;
 
+    /**
+     * Constructs an AbstractProtocolRendezvous instance with the specified processing components and sentinel configuration.
+     *
+     * <p>This constructor initializes the protocol processing by setting the provided normalizer, interpreter,
+     * conductor manager, output builder, and shadow stage. It also populates the inbound and outbound sentinel lists by
+     * retrieving sentinels from the given SentinelScanner based on the scheme's name.</p>
+     *
+     * @param normalizer       the protocol normalizer for preprocessing input data
+     * @param interpreter      the protocol interpreter for interpreting processed requests
+     * @param conductorManager the conductor manager coordinating the main processing logic
+     * @param rawOutputBuilder the builder used for constructing raw output data
+     * @param shadowStage      the manager handling processing stages
+     * @param scheme           the scheme whose name is used to fetch the appropriate sentinels
+     * @param sentinelScanner  the scanner utility for retrieving inbound and outbound sentinels
+     */
     public AbstractProtocolRendezvous(AbstractProtocolNormalizer<I> normalizer, AbstractProtocolInterpreter interpreter,
                                       AbstractConductorManager conductorManager, RawOutputBuilder<O> rawOutputBuilder,
                                       AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner sentinelScanner) {
@@ -48,6 +63,13 @@ public abstract class AbstractProtocolRendezvous<I extends RawInput, O extends R
         log.info("Creating protocol rendezvous : {}", getClass().getSimpleName());
     }
 
+    /**
+     * Processes the parsed request by executing the conductor logic, constructing the output,
+     * and applying outbound inspection before returning the result.
+     *
+     * @param parsed the parsed request to process
+     * @return the output generated after conducting the request and performing post-inspection
+     */
     protected O afterConduct(ParsedRequest parsed) {
         Object result = conductorManager.conduct(parsed);
         O output = rawOutputBuilder.build(result);
@@ -55,6 +77,15 @@ public abstract class AbstractProtocolRendezvous<I extends RawInput, O extends R
         return output;
     }
 
+    /**
+     * Pre-inspects the provided raw input using all registered inbound sentinels.
+     * 
+     * <p>This method iterates over each inbound sentinel and invokes its {@code inspectInbound}
+     * method on the raw input. Any {@link InboundSentinelException} thrown during inspection is
+     * caught and suppressed.</p>
+     *
+     * @param rawInput the raw input data to be inspected
+     */
     protected void preInspect(I rawInput) {
         try {
             for (FlowSentinel.InboundSentinel<I> s : inboundSentinels) {
@@ -65,6 +96,15 @@ public abstract class AbstractProtocolRendezvous<I extends RawInput, O extends R
         }
     }
 
+    /**
+     * Inspects the outbound protocol output using all registered outbound sentinels.
+     *
+     * <p>This method iterates over each outbound sentinel and invokes its inspection on the provided
+     * output. Any {@code OutboundSentinelException} thrown during the inspection is caught and silently ignored,
+     * ensuring that the inspection process does not interrupt the normal flow.
+     *
+     * @param output the protocol output to be inspected
+     */
     protected void postInspect(O output) {
         try {
             for (FlowSentinel.OutboundSentinel<O> s : outboundSentinels) {
