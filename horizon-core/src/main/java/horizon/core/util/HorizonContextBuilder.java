@@ -1,5 +1,6 @@
 package horizon.core.util;
 
+import horizon.core.constant.Scheme;
 import horizon.core.context.AbstractHorizonContext;
 import horizon.core.context.Properties;
 import horizon.core.model.input.RawInput;
@@ -7,6 +8,7 @@ import horizon.core.model.output.RawOutput;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 public class HorizonContextBuilder {
 
@@ -19,6 +21,8 @@ public class HorizonContextBuilder {
         private AbstractHorizonContext.AbstractProtocolContext<I, O> protocolContext;
         private AbstractHorizonContext.AbstractPresentationContext presentationContext;
         private AbstractHorizonContext.AbstractExecutionContext executionContext;
+        private Scheme scheme;
+        private SentinelScanner sentinelScanner;
         private Properties properties;
 
         public HorizonContextBuild<I, O> withProtocolContext(AbstractHorizonContext.AbstractProtocolContext<I, O> protocolContext) {
@@ -41,13 +45,25 @@ public class HorizonContextBuilder {
             return this;
         }
 
-        public AbstractHorizonContext<I, O> build(Class<? extends AbstractHorizonContext<I, O>> contextClass) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        public HorizonContextBuild<I, O> withScheme(Scheme scheme) {
+            this.scheme = scheme;
+            return this;
+        }
+
+        public HorizonContextBuild<I, O> withSentinelScanner(SentinelScanner sentinelScanner) {
+            this.sentinelScanner = sentinelScanner;
+            return this;
+        }
+
+        public AbstractHorizonContext<I, O> build(Class<? extends AbstractHorizonContext<I, O>> contextClass)
+                throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+
             Constructor<? extends AbstractHorizonContext<I, O>> constructor = contextClass.getDeclaredConstructor(AbstractHorizonContext.AbstractProtocolContext.class,
                     AbstractHorizonContext.AbstractPresentationContext.class,
                     AbstractHorizonContext.AbstractExecutionContext.class,
-                    Properties.class);
+                    Properties.class, Scheme.class, SentinelScanner.class);
             return constructor
-                    .newInstance(protocolContext, presentationContext, executionContext, properties);
+                    .newInstance(protocolContext, presentationContext, executionContext, properties, scheme, sentinelScanner);
         }
     }
 }

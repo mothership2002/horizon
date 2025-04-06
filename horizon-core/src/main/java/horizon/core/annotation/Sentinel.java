@@ -1,5 +1,6 @@
 package horizon.core.annotation;
 
+import horizon.core.constant.Scheme;
 import horizon.core.model.input.RawInput;
 
 import java.lang.annotation.ElementType;
@@ -11,7 +12,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Sentinel {
 
-    RawInput.Scheme[] scheme();
+    Scheme[] scheme();
 
     int order();
 

@@ -7,6 +7,10 @@ import horizon.protocol.http.output.HttpRawOutput;
 
 public class HorizonServletBootstrap extends ServerEngine.ServerEngineTemplate<HttpRawInput, HttpRawOutput> {
 
+    protected HorizonServletBootstrap(AbstractHorizonContext<HttpRawInput, HttpRawOutput> context) {
+        super(context);
+    }
+
     @Override
     protected void doStart(AbstractHorizonContext<HttpRawInput, HttpRawOutput> context) throws Exception {
 

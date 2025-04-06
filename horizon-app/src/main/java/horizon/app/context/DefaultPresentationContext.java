@@ -1,5 +1,6 @@
 package horizon.app.context;
 
+import horizon.app.conductor.DefaultConductorManager;
 import horizon.core.conductor.AbstractConductorManager;
 import horizon.core.context.AbstractHorizonContext;
 
@@ -7,6 +8,6 @@ public class DefaultPresentationContext extends AbstractHorizonContext.AbstractP
 
     @Override
     public AbstractConductorManager provideConductorManager() {
-        return null;
+        return new DefaultConductorManager();
     }
 }

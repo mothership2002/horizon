@@ -1,16 +1,20 @@
 package horizon.flow.rendezvous;
 
 import horizon.core.conductor.AbstractConductorManager;
-import horizon.core.flow.centinel.FlowSentinelInterface;
+import horizon.core.constant.Scheme;
+import horizon.core.flow.sentinel.AbstractInboundSentinel;
+import horizon.core.flow.sentinel.AbstractOutboundSentinel;
 import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
 import horizon.core.flow.interpreter.ParsedRequest;
 import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
 import horizon.core.flow.normalizer.NormalizedInput;
 import horizon.core.flow.rendezvous.AbstractProtocolRendezvous;
+import horizon.core.flow.sentinel.FlowSentinel;
 import horizon.core.model.RawOutputBuilder;
 import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
 import horizon.core.stage.AbstractShadowStage;
+import horizon.core.util.SentinelScanner;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -18,8 +22,8 @@ public class DefaultRendezvous<T extends RawInput, S extends RawOutput> extends 
 
 
     public DefaultRendezvous(AbstractProtocolNormalizer<T> normalizer, AbstractProtocolInterpreter interpreter,
-                             AbstractConductorManager conductorManager, RawOutputBuilder<S> rawOutputBuilder, AbstractShadowStage shadowStage) {
-        super(normalizer, interpreter, conductorManager, rawOutputBuilder, shadowStage);
+                             AbstractConductorManager conductorManager, RawOutputBuilder<S> rawOutputBuilder, AbstractShadowStage shadowStage, Scheme scheme, SentinelScanner sentinelScanner) {
+        super(normalizer, interpreter, conductorManager, rawOutputBuilder, shadowStage, scheme, sentinelScanner);
     }
 
     @Override
@@ -31,12 +35,12 @@ public class DefaultRendezvous<T extends RawInput, S extends RawOutput> extends 
     }
 
     @Override
-    public void addInboundSentinel(FlowSentinelInterface.InboundSentinel<T> sentinel) {
+    public void addInboundSentinel(FlowSentinel.InboundSentinel<T> sentinel) {
         inboundSentinels.add(sentinel);
     }
 
     @Override
-    public void addOutboundSentinel(FlowSentinelInterface.OutboundSentinel<S> sentinel) {
+    public void addOutboundSentinel(FlowSentinel.OutboundSentinel<S> sentinel) {
         outboundSentinels.add(sentinel);
     }
 

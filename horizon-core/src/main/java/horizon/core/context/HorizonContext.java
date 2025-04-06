@@ -2,7 +2,6 @@ package horizon.core.context;
 
 import horizon.core.conductor.AbstractConductorManager;
 import horizon.core.event.AbstractEventHorizon;
-import horizon.core.flow.centinel.FlowSentinelInterface;
 import horizon.core.flow.foyer.AbstractProtocolFoyer;
 import horizon.core.flow.interpreter.AbstractProtocolInterpreter;
 import horizon.core.flow.normalizer.AbstractProtocolNormalizer;
@@ -12,8 +11,6 @@ import horizon.core.model.input.RawInput;
 import horizon.core.model.output.RawOutput;
 import horizon.core.stage.AbstractCentralStage;
 import horizon.core.stage.AbstractShadowStage;
-
-import java.util.List;
 
 interface HorizonContext<I extends RawInput, O extends RawOutput> {
 
@@ -32,15 +29,6 @@ interface HorizonContext<I extends RawInput, O extends RawOutput> {
 
         AbstractProtocolFoyer<I> provideFoyer();
 
-        AbstractProtocolRendezvous<I, O> provideRendezvous();
-
-        List<FlowSentinelInterface.InboundSentinel<I>> scanInboundSentinels();
-
-        List<FlowSentinelInterface.OutboundSentinel<O>> scanOutboundSentinels();
-
-        AbstractProtocolNormalizer<I> provideNormalizer();
-
-        AbstractProtocolInterpreter provideInterpreter();
     }
 
     interface PresentationContext {
