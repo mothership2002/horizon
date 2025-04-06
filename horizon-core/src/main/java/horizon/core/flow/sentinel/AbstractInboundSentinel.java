@@ -8,6 +8,12 @@ public abstract class AbstractInboundSentinel<I extends RawInput> implements Flo
 
     private final Logger log = LoggerFactory.getLogger(AbstractInboundSentinel.class);
 
+    /**
+     * Constructs an inbound sentinel.
+     * <p>
+     * Logs an informational message with the concrete class name of the sentinel upon instantiation.
+     * </p>
+     */
     public AbstractInboundSentinel() {
         log.info("Inbound Sentinel created : {}", getClass().getSimpleName());
     }

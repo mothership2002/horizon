@@ -12,6 +12,13 @@ public abstract class AbstractConductorManager implements ConductorManager {
     private final Logger log = LoggerFactory.getLogger(AbstractConductorManager.class);
     protected final List<Guardian> guardians = new LinkedList<>();
 
+    /**
+     * Constructs a new AbstractConductorManager.
+     * <p>
+     * Logs an informational message indicating that the ConductorManager has been initialized,
+     * including the simple name of the concrete class extending this abstract class.
+     * </p>
+     */
     public AbstractConductorManager() {
         log.info("ConductorManager initialized : {}", getClass().getSimpleName());
     }

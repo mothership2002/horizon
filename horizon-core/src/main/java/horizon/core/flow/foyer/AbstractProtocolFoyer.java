@@ -11,6 +11,11 @@ public abstract class AbstractProtocolFoyer<T extends RawInput> implements Proto
     private final static Logger log = LoggerFactory.getLogger(AbstractProtocolFoyer.class);
     protected final AbstractProtocolRendezvous<T, ? extends RawOutput> rendezvous;
 
+    /**
+     * Initializes an AbstractProtocolFoyer with the specified protocol rendezvous.
+     *
+     * @param rendezvous the protocol rendezvous instance that manages protocol interactions for this foyer
+     */
     protected AbstractProtocolFoyer(AbstractProtocolRendezvous<T, ? extends RawOutput> rendezvous) {
         this.rendezvous = rendezvous;
         log.info("Initializing ProtocolFoyer : {}", getClass().getSimpleName());

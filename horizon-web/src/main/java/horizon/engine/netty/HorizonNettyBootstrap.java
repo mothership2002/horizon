@@ -16,10 +16,27 @@ public class HorizonNettyBootstrap extends ServerEngine.ServerEngineTemplate<Net
 
     public static final Logger logger = LoggerFactory.getLogger(HorizonNettyBootstrap.class);
 
+    /**
+     * Constructs a new HorizonNettyBootstrap instance using the provided Netty engine context.
+     *
+     * <p>This constructor initializes the bootstrap by passing the given context to the superclass.
+     * The context encapsulates Netty-specific configurations and resources required for the server.</p>
+     *
+     * @param nettyEngineContext the engine context containing Netty-related settings
+     */
     public HorizonNettyBootstrap(AbstractHorizonContext<NettyHttpRawInput, NettyHttpRawOutput> nettyEngineContext) {
         super(nettyEngineContext);
     }
 
+    /**
+     * Starts the Netty server by initializing event loop groups, configuring the server bootstrap,
+     * and binding to the port specified in the context's properties.
+     *
+     * <p>This method waits until the server channel is closed before shutting down the event loop groups gracefully.</p>
+     *
+     * @param context the horizon context containing Netty configuration properties (such as port and thread sizes)
+     * @throws Exception if an error occurs during server startup or binding operations
+     */
     @Override
     protected void doStart(AbstractHorizonContext<NettyHttpRawInput, NettyHttpRawOutput> context) throws Exception {
         NettyProperties props = (NettyProperties) context.getProperties();

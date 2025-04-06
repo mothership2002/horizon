@@ -17,6 +17,16 @@ import horizon.protocol.http.output.netty.NettyHttpRawOutput;
 @HorizonApplication
 public class HorizonApplicationDemo {
 
+    /**
+     * Initializes and starts the Horizon application by configuring and running all necessary contexts.
+     *
+     * <p>This method creates the execution and presentation contexts, configures a SentinelScanner for monitoring,
+     * and sets up the Netty protocol context with HTTP scheme. It then builds the complete Horizon context using the Netty properties,
+     * registers it with the HorizonContextCoordinator, and initiates the running of all registered contexts.
+     *
+     * @param args command-line arguments (not used)
+     * @throws Exception if an error occurs during application initialization or execution of the contexts
+     */
     public static void main(String[] args) throws Exception {
         HorizonContextCoordinator coordinator = new HorizonContextCoordinator();
         DefaultExecutionContext execution = new DefaultExecutionContext();

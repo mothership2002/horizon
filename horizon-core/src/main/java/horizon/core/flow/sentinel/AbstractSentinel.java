@@ -9,6 +9,11 @@ public abstract class AbstractSentinel<I extends RawInput, O extends RawOutput> 
 
     private final Logger log = LoggerFactory.getLogger(AbstractSentinel.class);
 
+    /**
+     * Constructs a new AbstractSentinel instance.
+     *
+     * <p>This constructor logs the creation of the sentinel, including its class simple name.</p>
+     */
     public AbstractSentinel() {
         log.info("Total Sentinel created : {}", getClass().getSimpleName());
     }
