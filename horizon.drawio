@@ -88,6 +88,9 @@
         <mxCell id="JxTuWyFHGjKXvP8H2Vxi-36" value="Orchestrator" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="-310" y="740" width="120" height="60" as="geometry" />
         </mxCell>
+        <mxCell id="JxTuWyFHGjKXvP8H2Vxi-39" value="&lt;h1 style=&quot;margin-top: 0px;&quot;&gt;각 프로토콜 별 핸들링&lt;/h1&gt;&lt;div&gt;포이어에 진입하고 센티널이 각 요청 순정 값을 확인 후&amp;nbsp;&lt;br&gt;노말라이저 -&amp;gt; 인터프리터로 넘어가는 이 구간을 사용자 인터페이스로 열 되,&amp;nbsp;&lt;/div&gt;&lt;div&gt;내가 기본적인 http정도는 만들어야겠다.&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="-1330" y="690" width="470" height="190" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>
