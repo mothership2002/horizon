@@ -16,6 +16,17 @@ public class NormalizedInput {
     private final Object body;
     private final Object rawReference;
 
+    /**
+     * Constructs a NormalizedInput instance with the specified request components.
+     *
+     * @param scheme the protocol or scheme used for the request
+     * @param method the HTTP method (e.g., GET or POST)
+     * @param path the request path
+     * @param headers the HTTP headers
+     * @param queryParams the query parameters
+     * @param body the request payload
+     * @param rawReference a reference to the raw input data
+     */
     public NormalizedInput(Scheme scheme, String method, String path, Map<String, String> headers, Map<String, String> queryParams, Object body, Object rawReference) {
         this.scheme = scheme;
         this.method = method;

@@ -14,7 +14,14 @@ import horizon.core.stage.AbstractShadowStage;
 
 interface HorizonContext<I extends RawInput, O extends RawOutput> {
 
-    ProtocolContext<I, O> protocolContext();
+    /**
+ * Returns the protocol context providing access to protocol-related functionalities.
+ *
+ * <p>This context is parameterized with input and output types, offering operations such as output construction and protocol initialization.</p>
+ *
+ * @return the protocol context instance
+ */
+ProtocolContext<I, O> protocolContext();
 
     ExecutionContext executionContext();
 
@@ -27,7 +34,12 @@ interface HorizonContext<I extends RawInput, O extends RawOutput> {
     interface ProtocolContext<I extends RawInput, O extends RawOutput> {
         RawOutputBuilder<O> provideOutputBuilder();
 
-        AbstractProtocolFoyer<I> provideFoyer();
+        /**
+ * Retrieves the protocol foyer that handles the initial stage of protocol processing.
+ *
+ * @return the protocol foyer instance responsible for managing early protocol interactions.
+ */
+AbstractProtocolFoyer<I> provideFoyer();
 
     }
 

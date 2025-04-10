@@ -8,6 +8,12 @@ public abstract class AbstractOutboundSentinel<O extends RawOutput> implements F
 
     private final Logger log = LoggerFactory.getLogger(AbstractOutboundSentinel.class);
 
+    /**
+     * Constructs a new AbstractOutboundSentinel instance and logs its creation.
+     *
+     * <p>This constructor logs an informational message that includes the simple name
+     * of the instantiated class.</p>
+     */
     public AbstractOutboundSentinel() {
         log.info("Outbound Sentinel created : {}", getClass().getSimpleName());
     }
