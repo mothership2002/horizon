@@ -23,5 +23,4 @@ public abstract class AbstractRendezvous<I extends RawInput, O extends RawOutput
         this.interpreter = interpreter;
     }
 
-
 }

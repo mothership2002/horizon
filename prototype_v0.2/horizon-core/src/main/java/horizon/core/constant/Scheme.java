@@ -1,11 +1,11 @@
 package horizon.core.constant;
 
 public enum Scheme {
-    http,
-    https,
-    websocket,
-    websocketSsl,
-    gRpc,
-    cli,
-    unknown;
+    HTTP,
+    HTTPS,
+    WEBSOCKET,
+    WEBSOCKET_SSL,
+    GRPC,
+    CLI,
+    UNKNOWN;
 }

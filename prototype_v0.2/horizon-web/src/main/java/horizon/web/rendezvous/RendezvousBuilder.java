@@ -12,11 +12,12 @@ import horizon.core.scanner.SentinelScanner;
 import horizon.web.provider.HorizonRendezvousProvider;
 
 import java.util.List;
-import java.util.ServiceLoader;
+import java.util.Map;
 
 public class RendezvousBuilder<I extends RawInput, O extends RawOutput> {
 
     private final SentinelScanner<I, O> sentinelScanner;
+    private final Map<Scheme, HorizonRendezvousProvider<I, O>> rendezvousProviders;
 
     private Scheme scheme;
     private Normalizer normalizer;
@@ -24,12 +25,15 @@ public class RendezvousBuilder<I extends RawInput, O extends RawOutput> {
     private List<InboundSentinel<I>> inboundSentinels;
     private List<OutboundSentinel<O>> outboundSentinels;
 
-    public RendezvousBuilder(SentinelScanner<I, O> sentinelScanner) {
+    public RendezvousBuilder(SentinelScanner<I, O> sentinelScanner, Map<Scheme, HorizonRendezvousProvider<I, O>> rendezvousProviders) {
         this.sentinelScanner = sentinelScanner;
+        this.rendezvousProviders = rendezvousProviders;
     }
 
-    public static <I extends RawInput, O extends RawOutput> RendezvousBuilder<I, O> getBuilder(SentinelScanner<I, O> sentinelScanner) {
-        return new RendezvousBuilder<>(sentinelScanner);
+    public static <I extends RawInput, O extends RawOutput> RendezvousBuilder<I, O> getBuilder(
+            SentinelScanner<I, O> sentinelScanner,
+            Map<Scheme, HorizonRendezvousProvider<I, O>> rendezvousProviders) {
+        return new RendezvousBuilder<>(sentinelScanner, rendezvousProviders);
     }
 
     public RendezvousBuilder<I, O> withScheme(Scheme scheme) {
@@ -48,10 +52,10 @@ public class RendezvousBuilder<I extends RawInput, O extends RawOutput> {
     }
 
     public AbstractRendezvous<I, O> build() {
-        ServiceLoader<HorizonRendezvousProvider<I, O>> load = ServiceLoader.load(HorizonRendezvousProvider<>.class);
         inboundSentinels = sentinelScanner.getInboundSentinels(this.scheme.name());
         outboundSentinels = sentinelScanner.getOutboundSentinels(this.scheme.name());
-        return
+        HorizonRendezvousProvider<I, O> rendezvousProvider = rendezvousProviders.get(this.scheme);
+        return rendezvousProvider.build(this);
     }
 
 }
