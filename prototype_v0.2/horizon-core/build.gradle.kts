@@ -4,9 +4,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":horizon-core"))
-    implementation("io.netty:netty-all:4.1.119.Final")
-
+    implementation("org.reflections:reflections:0.10.2")
 }
 
 java {
