@@ -13,7 +13,7 @@ public class HorizonContext {
     private final String traceId;              // Unique identifier for this flow
     private final String scheme;               // e.g., http, cli, ws
     private final String source;               // source of the request
-    private final RawInput originalInput;      // raw input, protocol-agnostic abstraction
+    private final RawInput rawInput;      // raw input, protocol-agnostic abstraction
 
     private String parsedIntent;               // interpreted meaning
     private Object intentPayload;              // structured payload for downstream
@@ -27,11 +27,11 @@ public class HorizonContext {
 
     private Throwable failureCause;            // failure info if execution failed
 
-    public HorizonContext(String scheme, String source, RawInput originalInput) {
+    public HorizonContext(RawInput rawInput) {
         this.traceId = UUID.randomUUID().toString();
-        this.scheme = scheme;
-        this.source = source;
-        this.originalInput = originalInput;
+        this.scheme = rawInput.getScheme();
+        this.source = rawInput.getSource();
+        this.rawInput = rawInput;
     }
 
     public String getTraceId() {
@@ -46,8 +46,8 @@ public class HorizonContext {
         return source;
     }
 
-    public RawInput getOriginalInput() {
-        return originalInput;
+    public RawInput getRawInput() {
+        return rawInput;
     }
 
     public String getParsedIntent() {

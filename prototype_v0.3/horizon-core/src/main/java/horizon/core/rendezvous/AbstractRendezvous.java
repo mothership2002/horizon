@@ -2,36 +2,39 @@ package horizon.core.rendezvous;
 
 import horizon.core.model.HorizonContext;
 import horizon.core.model.RawInput;
+import horizon.core.model.RawOutput;
 
 import java.util.List;
+import java.util.Objects;
 
-public abstract class AbstractRendezvous<I extends RawInput, N, K, P > implements Rendezvous<I, K, P> {
+public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends RawOutput> implements Rendezvous<I, O> {
 
-    protected Foyer<I> foyer;
-    protected List<Sentinel<I>> sentinels;
-    protected Normalizer<I, N> normalizer;
-    protected Interpreter<N, K, P> interpreter;
+    protected final List<Sentinel<I>> sentinels;
+    protected final Normalizer<I, N> normalizer;
+    protected final Interpreter<N, K, P> interpreter;
 
-    public AbstractRendezvous(Foyer<I> foyer, List<Sentinel<I>> sentinels, Normalizer<I, N> normalizer, Interpreter<N, K, P> interpreter) {
-        this.foyer = foyer;
-        this.sentinels = sentinels;
+    public AbstractRendezvous(List<Sentinel<I>> sentinels, Normalizer<I, N> normalizer, Interpreter<N, K, P> interpreter) {
+        this.sentinels = List.copyOf(Objects.requireNonNull(sentinels));
         this.normalizer = normalizer;
         this.interpreter = interpreter;
     }
 
-    public void receive(I input, HorizonContext context) {
-        if (!foyer.allow(input)) {
-            throw new SecurityException("Input not allowed");
-        }
-        for (Sentinel<I> sentinel : sentinels) {
-            sentinel.inspect(input);
-        }
+    public HorizonContext encounter(I input) {
+        for (Sentinel<I> s : sentinels) s.inspectInbound(input);
 
         N normalized = normalizer.normalize(input);
         K key = interpreter.extractIntentKey(normalized);
         P payload = interpreter.extractIntentPayload(normalized);
 
-        context.setParsedIntent(key.toString());
+        HorizonContext context = new HorizonContext(input);
+        context.setParsedIntent(key != null ? key.toString() : null);
         context.setIntentPayload(payload);
+        return context;
+    }
+
+
+    @Override
+    public O fallAway(HorizonContext context) {
+        return null;
     }
 }
