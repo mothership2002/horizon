@@ -1,6 +1,8 @@
 package horizon.core.context;
 
 import horizon.core.constant.Scheme;
+import horizon.core.model.RawInput;
+import horizon.core.model.RawOutput;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,13 +15,16 @@ import java.util.Optional;
  */
 public class HorizonSystemContext {
 
-    private final Map<Scheme, HorizonRuntimeUnit> runtimeUnits = new HashMap<>();
+    private final Map<Scheme, HorizonRuntimeUnit<?, ?, ?, ?, ?>> runtimeUnits = new HashMap<>();
 
-    public void registerUnit(Scheme scheme, HorizonRuntimeUnit unit) {
+    public <I extends RawInput, N, K, P, O extends RawOutput>
+    void registerUnit(Scheme scheme, HorizonRuntimeUnit<I, N, K, P, O> unit) {
         runtimeUnits.put(scheme, unit);
     }
 
-    public Optional<HorizonRuntimeUnit> resolveUnit(Scheme scheme) {
-        return Optional.ofNullable(runtimeUnits.get(scheme));
+    @SuppressWarnings("unchecked")
+    public <I extends RawInput, N, K, P, O extends RawOutput>
+    Optional<HorizonRuntimeUnit<I, N, K, P, O>> resolveUnit(Scheme scheme) {
+        return Optional.ofNullable((HorizonRuntimeUnit<I, N, K, P, O>) runtimeUnits.get(scheme));
     }
 }

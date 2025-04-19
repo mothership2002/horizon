@@ -1,26 +1,37 @@
 package horizon.core.rendezvous;
 
+import horizon.core.model.HorizonContext;
 import horizon.core.model.RawInput;
-import horizon.core.model.RawOutput;
-import horizon.core.rendezvous.interpreter.AbstractInterpreter;
-import horizon.core.rendezvous.normalizer.Normalizer;
-import horizon.core.rendezvous.sentinel.InboundSentinel;
-import horizon.core.rendezvous.sentinel.OutboundSentinel;
 
 import java.util.List;
 
-public abstract class AbstractRendezvous<I extends RawInput, O extends RawOutput> implements Rendezvous<I, O> {
+public abstract class AbstractRendezvous<I extends RawInput, N, K, P > implements Rendezvous<I, K, P> {
 
-    private final List<InboundSentinel<I>> inboundSentinels;
-    private final List<OutboundSentinel<O>> outboundSentinels;
-    private final Normalizer normalizer;
-    private final AbstractInterpreter interpreter;
+    protected Foyer<I> foyer;
+    protected List<Sentinel<I>> sentinels;
+    protected Normalizer<I, N> normalizer;
+    protected Interpreter<N, K, P> interpreter;
 
-    protected AbstractRendezvous(List<InboundSentinel<I>> inboundSentinels, List<OutboundSentinel<O>> outboundSentinels, Normalizer normalizer, AbstractInterpreter interpreter) {
-        this.inboundSentinels = inboundSentinels;
-        this.outboundSentinels = outboundSentinels;
+    public AbstractRendezvous(Foyer<I> foyer, List<Sentinel<I>> sentinels, Normalizer<I, N> normalizer, Interpreter<N, K, P> interpreter) {
+        this.foyer = foyer;
+        this.sentinels = sentinels;
         this.normalizer = normalizer;
         this.interpreter = interpreter;
     }
 
+    public void receive(I input, HorizonContext context) {
+        if (!foyer.allow(input)) {
+            throw new SecurityException("Input not allowed");
+        }
+        for (Sentinel<I> sentinel : sentinels) {
+            sentinel.inspect(input);
+        }
+
+        N normalized = normalizer.normalize(input);
+        K key = interpreter.extractIntentKey(normalized);
+        P payload = interpreter.extractIntentPayload(normalized);
+
+        context.setParsedIntent(key.toString());
+        context.setIntentPayload(payload);
+    }
 }
