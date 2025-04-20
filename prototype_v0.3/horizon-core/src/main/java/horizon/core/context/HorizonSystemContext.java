@@ -3,7 +3,9 @@ package horizon.core.context;
 import horizon.core.constant.Scheme;
 import horizon.core.model.RawInput;
 import horizon.core.model.RawOutput;
+import horizon.core.rendezvous.AbstractRendezvous;
 import horizon.core.rendezvous.Foyer;
+import horizon.core.rendezvous.Rendezvous;
 import horizon.core.rendezvous.protocol.ProtocolAdapter;
 import horizon.core.rendezvous.protocol.ProtocolFoyer;
 
@@ -72,6 +74,18 @@ public class HorizonSystemContext {
         }
         foyers.clear();
 
+        // Close all rendezvous instances to ensure proper executor shutdown
+        for (HorizonRuntimeUnit<?, ?, ?, ?, ?> unit : runtimeUnits.values()) {
+            try {
+                Rendezvous<?, ?> rendezvous = unit.getRendezvousDescriptor().rendezvous();
+                if (rendezvous instanceof AbstractRendezvous) {
+                    ((AbstractRendezvous<?, ?, ?, ?, ?>) rendezvous).close();
+                    LOGGER.fine("Closed rendezvous for unit: " + unit.getRendezvousDescriptor().scheme());
+                }
+            } catch (Exception e) {
+                LOGGER.warning("Error closing rendezvous: " + e.getMessage());
+            }
+        }
         runtimeUnits.clear();
         shutdown = true;
     }

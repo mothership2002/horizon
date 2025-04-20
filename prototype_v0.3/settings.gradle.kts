@@ -1,3 +1,3 @@
 
 rootProject.name = "horizon"
-include("horizon-core", "horizon-web", "horizon-demo", "horizon-http", "horizon-ws")
+include("horizon-core","horizon-http", "horizon-ws", "demo-http")

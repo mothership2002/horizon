@@ -12,6 +12,7 @@ repositories {
 dependencies {
     implementation(project(":horizon-core"))
     implementation("io.netty:netty-all:4.1.119.Final") // WebSocket also uses Netty
+
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
