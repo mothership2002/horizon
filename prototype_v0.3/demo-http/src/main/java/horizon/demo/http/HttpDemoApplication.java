@@ -1,23 +1,16 @@
 package horizon.demo.http;
 
-import horizon.core.conductor.Conductor;
-import horizon.core.constant.Scheme;
-import horizon.core.context.HorizonRuntimeUnit;
-import horizon.core.context.HorizonSystemContext;
-import horizon.core.engine.HorizonFlowEngine;
-import horizon.core.rendezvous.RendezvousDescriptor;
-import horizon.core.stage.StageHandler;
 import horizon.http.netty.NettyHttpAdapter;
 import horizon.http.netty.NettyHttpFoyer;
-import horizon.http.netty.NettyHttpProtocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.logging.Logger;
 
 /**
  * A simple demo application that sets up an HTTP server using the Horizon Framework.
  */
 public class HttpDemoApplication {
-    private static final Logger LOGGER = Logger.getLogger(HttpDemoApplication.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(HttpDemoApplication.class.getName());
     private static final int HTTP_PORT = 8080;
 
     public static void main(String[] args) {
@@ -57,8 +50,8 @@ public class HttpDemoApplication {
             // Keep the application running
             Thread.currentThread().join();
         } catch (Exception e) {
-            LOGGER.severe("Error starting HTTP server: " + e.getMessage());
-            e.printStackTrace();
+            LOGGER.error("Error starting HTTP server: {}", e.getMessage());
+            LOGGER.error("", e);
         }
     }
 }

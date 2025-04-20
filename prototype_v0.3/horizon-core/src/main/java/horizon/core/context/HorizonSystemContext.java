@@ -11,7 +11,8 @@ import horizon.core.rendezvous.protocol.ProtocolFoyer;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * HorizonSystemContext represents the global registry of Horizon runtime units.
@@ -21,7 +22,7 @@ import java.util.logging.Logger;
  * This class is thread-safe and can be used concurrently from multiple threads.
  */
 public class HorizonSystemContext {
-    private static final Logger LOGGER = Logger.getLogger(HorizonSystemContext.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(HorizonSystemContext.class);
 
     private final Map<Scheme, HorizonRuntimeUnit<?, ?, ?, ?, ?>> runtimeUnits = new ConcurrentHashMap<>();
     private final Map<Scheme, Foyer<?>> foyers = new ConcurrentHashMap<>();
@@ -69,7 +70,7 @@ public class HorizonSystemContext {
             try {
                 foyer.shutdown();
             } catch (Exception e) {
-                LOGGER.warning("Error shutting down foyer: " + e.getMessage());
+                LOGGER.warn("Error shutting down foyer: {}", e.getMessage());
             }
         }
         foyers.clear();
@@ -80,10 +81,10 @@ public class HorizonSystemContext {
                 Rendezvous<?, ?> rendezvous = unit.getRendezvousDescriptor().rendezvous();
                 if (rendezvous instanceof AbstractRendezvous) {
                     ((AbstractRendezvous<?, ?, ?, ?, ?>) rendezvous).close();
-                    LOGGER.fine("Closed rendezvous for unit: " + unit.getRendezvousDescriptor().scheme());
+                    LOGGER.debug("Closed rendezvous for unit: {}", unit.getRendezvousDescriptor().scheme());
                 }
             } catch (Exception e) {
-                LOGGER.warning("Error closing rendezvous: " + e.getMessage());
+                LOGGER.warn("Error closing rendezvous: {}", e.getMessage());
             }
         }
         runtimeUnits.clear();
@@ -131,7 +132,7 @@ public class HorizonSystemContext {
         checkInitialized();
         Objects.requireNonNull(scheme, "scheme must not be null");
 
-        LOGGER.fine("Resolving runtime unit for scheme: " + scheme);
+        LOGGER.debug("Resolving runtime unit for scheme: {}", scheme);
         return Optional.ofNullable((HorizonRuntimeUnit<I, N, K, P, O>) runtimeUnits.get(scheme));
     }
 
@@ -227,7 +228,7 @@ public class HorizonSystemContext {
         checkInitialized();
         Objects.requireNonNull(scheme, "scheme must not be null");
 
-        LOGGER.fine("Resolving foyer for scheme: " + scheme);
+        LOGGER.debug("Resolving foyer for scheme: {}", scheme);
         return Optional.ofNullable((Foyer<I>) foyers.get(scheme));
     }
 

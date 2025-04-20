@@ -6,13 +6,14 @@ import horizon.core.rendezvous.Rendezvous;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A simple implementation of Rendezvous for HTTP requests.
  */
 public class SimpleHttpRendezvous implements Rendezvous<SimpleHttpInput, SimpleHttpOutput> {
-    private static final Logger LOGGER = Logger.getLogger(SimpleHttpRendezvous.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleHttpRendezvous.class);
 
     /**
      * Creates a context from the given raw input.
@@ -54,14 +55,14 @@ public class SimpleHttpRendezvous implements Rendezvous<SimpleHttpInput, SimpleH
 
         // Check if the context has a failure cause
         if (context.getFailureCause() != null) {
-            LOGGER.warning("Error processing request: " + context.getFailureCause().getMessage());
+            LOGGER.warn("Error processing request: {}", context.getFailureCause().getMessage());
             return new SimpleHttpOutput("Error: " + context.getFailureCause().getMessage(), 500, "text/plain");
         }
 
         // Get the payload from the context
         Map<String, Object> payload = (Map<String, Object>) context.getIntentPayload();
         if (payload == null) {
-            LOGGER.warning("No payload found in context");
+            LOGGER.warn("No payload found in context");
             return new SimpleHttpOutput("Internal Server Error: No payload found", 500, "text/plain");
         }
 

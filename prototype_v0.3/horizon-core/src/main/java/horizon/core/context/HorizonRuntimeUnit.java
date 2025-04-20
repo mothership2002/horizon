@@ -12,7 +12,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A runtime unit for the Horizon framework that manages rendezvous, conductors, and stage handlers.
@@ -25,7 +26,7 @@ import java.util.logging.Logger;
  * @param <O> the type of raw output
  */
 public class HorizonRuntimeUnit<I extends RawInput, N, K, P, O extends RawOutput> {
-    private static final Logger LOGGER = Logger.getLogger(HorizonRuntimeUnit.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(HorizonRuntimeUnit.class);
 
     private final RendezvousDescriptor<I, N, K, P, O> rendezvousDescriptor;
     private final Map<String, Conductor<P>> conductorMap = new ConcurrentHashMap<>();
@@ -81,7 +82,7 @@ public class HorizonRuntimeUnit<I extends RawInput, N, K, P, O extends RawOutput
         Objects.requireNonNull(intentKey, "intentKey must not be null");
         Objects.requireNonNull(conductor, "conductor must not be null");
 
-        LOGGER.fine("Registering conductor for intent key: " + intentKey);
+        LOGGER.debug("Registering conductor for intent key: {}", intentKey);
         conductorMap.put(intentKey, conductor);
     }
 
@@ -107,7 +108,7 @@ public class HorizonRuntimeUnit<I extends RawInput, N, K, P, O extends RawOutput
     public boolean unregisterConductor(String intentKey) {
         Objects.requireNonNull(intentKey, "intentKey must not be null");
 
-        LOGGER.fine("Unregistering conductor for intent key: " + intentKey);
+        LOGGER.debug("Unregistering conductor for intent key: {}", intentKey);
         return conductorMap.remove(intentKey) != null;
     }
 
@@ -141,7 +142,7 @@ public class HorizonRuntimeUnit<I extends RawInput, N, K, P, O extends RawOutput
         Objects.requireNonNull(commandKey, "commandKey must not be null");
         Objects.requireNonNull(handler, "handler must not be null");
 
-        LOGGER.fine("Registering central stage for command key: " + commandKey);
+        LOGGER.debug("Registering central stage for command key: {}", commandKey);
         centralStageMap.put(commandKey, handler);
     }
 
@@ -155,7 +156,7 @@ public class HorizonRuntimeUnit<I extends RawInput, N, K, P, O extends RawOutput
     public boolean unregisterCentralStage(String commandKey) {
         Objects.requireNonNull(commandKey, "commandKey must not be null");
 
-        LOGGER.fine("Unregistering central stage for command key: " + commandKey);
+        LOGGER.debug("Unregistering central stage for command key: {}", commandKey);
         return centralStageMap.remove(commandKey) != null;
     }
 
@@ -189,7 +190,7 @@ public class HorizonRuntimeUnit<I extends RawInput, N, K, P, O extends RawOutput
         Objects.requireNonNull(commandKey, "commandKey must not be null");
         Objects.requireNonNull(handler, "handler must not be null");
 
-        LOGGER.fine("Registering shallow stage for command key: " + commandKey);
+        LOGGER.debug("Registering shallow stage for command key: {}", commandKey);
         shallowStageMap.put(commandKey, handler);
     }
 
@@ -203,7 +204,7 @@ public class HorizonRuntimeUnit<I extends RawInput, N, K, P, O extends RawOutput
     public boolean unregisterShallowStage(String commandKey) {
         Objects.requireNonNull(commandKey, "commandKey must not be null");
 
-        LOGGER.fine("Unregistering shallow stage for command key: " + commandKey);
+        LOGGER.debug("Unregistering shallow stage for command key: {}", commandKey);
         return shallowStageMap.remove(commandKey) != null;
     }
 

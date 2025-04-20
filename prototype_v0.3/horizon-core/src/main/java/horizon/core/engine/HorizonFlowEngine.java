@@ -14,8 +14,8 @@ import horizon.core.stage.StageHandler;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * HorizonFlowEngine orchestrates the entire flow through a single entry point (run):
@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  * • Rendezvous.fallAway(context) call
  */
 public class HorizonFlowEngine {
-    private static final Logger LOGGER = Logger.getLogger(HorizonFlowEngine.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(HorizonFlowEngine.class);
 
     private final HorizonSystemContext systemContext;
     private final PerformanceMonitor performanceMonitor;
@@ -74,7 +74,7 @@ public class HorizonFlowEngine {
             // Finalize output
             return finalizeOutput(context, unit, output);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error processing input: " + e.getMessage(), e);
+            LOGGER.error("Error processing input: {}", e.getMessage(), e);
             throw e;
         } finally {
             long endTime = System.currentTimeMillis();
@@ -105,14 +105,14 @@ public class HorizonFlowEngine {
      * @throws IllegalStateException if no runtime unit is found for the input's scheme
      */
     private HorizonRuntimeUnit<?, ?, ?, ?, ?> resolveRuntimeUnit(RawInput input) {
-        LOGGER.fine("Resolving runtime unit for scheme: " + input.getScheme());
+        LOGGER.info("Resolving runtime unit for scheme: " + input.getScheme());
 
         Optional<HorizonRuntimeUnit<RawInput, Object, Object, Object, RawOutput>> optUnit
                 = systemContext.resolveUnit(Scheme.valueOf(input.getScheme()));
 
         return optUnit.orElseThrow(() -> {
             String message = "No runtime for scheme " + input.getScheme();
-            LOGGER.severe(message);
+            LOGGER.error(message);
             return new IllegalStateException(message);
         });
     }
@@ -125,7 +125,7 @@ public class HorizonFlowEngine {
      * @return the created context
      */
     private HorizonContext createContext(RawInput input, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit) {
-        LOGGER.fine("Creating context for input from source: " + input.getSource());
+        LOGGER.info("Creating context for input from source: " + input.getSource());
 
         @SuppressWarnings("unchecked")
         Rendezvous<RawInput, RawOutput> rendezvous =
@@ -134,7 +134,7 @@ public class HorizonFlowEngine {
         try {
             return rendezvous.encounter(input);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error creating context: " + e.getMessage(), e);
+            LOGGER.error("Error creating context: {}", e.getMessage(), e);
             return rendezvous.handleError(e, input);
         }
     }
@@ -148,10 +148,10 @@ public class HorizonFlowEngine {
      * @throws IllegalStateException if no conductor is found for the parsed intent
      */
     private HorizonContext executeCommand(HorizonContext context, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit) {
-        LOGGER.fine("Executing command for intent: " + context.getParsedIntent());
+        LOGGER.info("Executing command for intent: " + context.getParsedIntent());
 
         if (context.hasFailed()) {
-            LOGGER.warning("Context has failed, skipping command execution");
+            LOGGER.warn("Context has failed, skipping command execution");
             return context;
         }
 
@@ -162,7 +162,7 @@ public class HorizonFlowEngine {
                     (Conductor<Object>) unit.getConductor(parsedIntent)
                             .orElseThrow(() -> {
                                 String message = "No conductor for intent " + parsedIntent;
-                                LOGGER.severe(message);
+                                LOGGER.error(message);
                                 return new IllegalStateException(message);
                             });
 
@@ -172,7 +172,7 @@ public class HorizonFlowEngine {
 
             return context;
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error executing command: " + e.getMessage(), e);
+            LOGGER.error("Error executing command: {}", e.getMessage(), e);
             context.setFailureCause(e);
             return context;
         }
@@ -187,10 +187,10 @@ public class HorizonFlowEngine {
      * @throws IllegalStateException if no stage handler is found for the command's key
      */
     private RawOutput handleResult(HorizonContext context, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit) {
-        LOGGER.fine("Handling result for context: " + context.getTraceId());
+        LOGGER.info("Handling result for context: " + context.getTraceId());
 
         if (context.hasFailed()) {
-            LOGGER.warning("Context has failed, creating error response");
+            LOGGER.warn("Context has failed, creating error response");
             // Create a default error response
             return new ErrorOutput(context.getFailureCause());
         }
@@ -207,7 +207,7 @@ public class HorizonFlowEngine {
             StageHandler handler = unit.getCentralStage(commandKey)
                     .orElseThrow(() -> {
                         String message = "No stage handler for command " + commandKey;
-                        LOGGER.severe(message);
+                        LOGGER.error(message);
                         return new IllegalStateException(message);
                     });
 
@@ -216,7 +216,7 @@ public class HorizonFlowEngine {
 
             return output;
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error handling result: " + e.getMessage(), e);
+            LOGGER.error("Error handling result: {}", e.getMessage(), e);
             context.setFailureCause(e);
             return new ErrorOutput(e);
         }
@@ -231,7 +231,7 @@ public class HorizonFlowEngine {
      * @return the finalized raw output
      */
     private RawOutput finalizeOutput(HorizonContext context, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit, RawOutput output) {
-        LOGGER.fine("Finalizing output for context: " + context.getTraceId());
+        LOGGER.info("Finalizing output for context: " + context.getTraceId());
 
         try {
             @SuppressWarnings("unchecked")
@@ -241,7 +241,7 @@ public class HorizonFlowEngine {
             RawOutput finalOutput = rendezvous.fallAway(context);
             return finalOutput != null ? finalOutput : output;
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error finalizing output: " + e.getMessage(), e);
+            LOGGER.error("Error finalizing output: {}", e.getMessage(), e);
             return output; // Return the original output if finalization fails
         }
     }
