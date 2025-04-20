@@ -2,6 +2,10 @@ package horizon.demo.http;
 
 import horizon.http.netty.NettyHttpAdapter;
 import horizon.http.netty.NettyHttpFoyer;
+import horizon.http.simple.SimpleHttpInput;
+import horizon.http.simple.SimpleHttpInputConverter;
+import horizon.http.simple.SimpleHttpOutput;
+import horizon.http.simple.SimpleHttpRendezvous;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +28,7 @@ public class HttpDemoApplication {
             SimpleHttpInputConverter inputConverter = new SimpleHttpInputConverter();
 
             // Create the adapter
-            NettyHttpAdapter<SimpleHttpInput, SimpleHttpOutput> adapter = 
+            NettyHttpAdapter<SimpleHttpInput, SimpleHttpOutput> adapter =
                 new NettyHttpAdapter<>(inputConverter);
 
             // Create the foyer

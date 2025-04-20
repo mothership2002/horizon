@@ -1,14 +1,13 @@
-package horizon.demo.http;
+package horizon.http.simple;
 
 import horizon.core.model.HorizonContext;
 import horizon.core.rendezvous.AbstractRendezvous;
 import horizon.core.rendezvous.Sentinel;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

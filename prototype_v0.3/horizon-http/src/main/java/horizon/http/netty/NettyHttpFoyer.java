@@ -57,7 +57,7 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
      */
     @Override
     protected void initializeServer() throws Exception {
-        LOGGER.info("Initializing Netty HTTP server on port " + getPort());
+        LOGGER.info("Initializing Netty HTTP server on port {}", getPort());
         
         bossGroup = new NioEventLoopGroup(1, new DefaultThreadFactory("netty-http-boss"));
         workerGroup = new NioEventLoopGroup(0, new DefaultThreadFactory("netty-http-worker"));
@@ -79,7 +79,7 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
         
         serverChannel = bootstrap.bind(getPort()).sync().channel();
-        LOGGER.info("Netty HTTP server initialized and listening on port " + getPort());
+        LOGGER.info("Netty HTTP server initialized and listening on port {}", getPort());
     }
 
     /**

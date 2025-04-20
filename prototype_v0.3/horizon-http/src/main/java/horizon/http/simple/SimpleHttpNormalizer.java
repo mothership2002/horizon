@@ -1,4 +1,4 @@
-package horizon.demo.http;
+package horizon.http.simple;
 
 import horizon.core.rendezvous.Normalizer;
 import java.util.Objects;

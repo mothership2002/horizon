@@ -1,4 +1,4 @@
-package horizon.demo.http;
+package horizon.http.simple;
 
 import horizon.core.model.RawInput;
 

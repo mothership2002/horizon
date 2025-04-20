@@ -1,9 +1,8 @@
-package horizon.demo.http;
+package horizon.http.simple;
 
 import horizon.core.model.RawOutput;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Objects;
 
 /**

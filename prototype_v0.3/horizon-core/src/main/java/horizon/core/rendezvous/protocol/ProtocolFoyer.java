@@ -68,11 +68,11 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
     @Override
     public void initialize() {
         if (initialized) {
-            LOGGER.warn(protocol.getName() + " foyer is already initialized");
+            LOGGER.warn("{} foyer is already initialized", protocol.getName());
             return;
         }
 
-        LOGGER.info("Initializing " + protocol.getName() + " foyer on port " + port);
+        LOGGER.info("Initializing {} foyer on port {}", protocol.getName(), port);
         
         try {
             // Initialize the protocol
@@ -82,9 +82,9 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             initializeServer();
             
             initialized = true;
-            LOGGER.info(protocol.getName() + " foyer initialized and listening on port " + port);
+            LOGGER.info("{} foyer initialized and listening on port {}", protocol.getName(), port);
         } catch (Exception e) {
-            LOGGER.error("Failed to initialize " + protocol.getName() + " foyer: " + e.getMessage());
+            LOGGER.error("Failed to initialize {} foyer: {}", protocol.getName(), e.getMessage());
             shutdown();
             throw new RuntimeException("Failed to initialize " + protocol.getName() + " foyer", e);
         }
@@ -175,7 +175,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             
             // Check if the request should be allowed
             if (!allow(input)) {
-                LOGGER.warn("Request from " + remoteAddress + " was denied by the foyer");
+                LOGGER.warn("Request from {} was denied by the foyer", remoteAddress);
                 return adapter.createForbiddenResponse(context);
             }
             
@@ -184,7 +184,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             
             // If the context has a failure cause, return an error response
             if (horizonContext.getFailureCause() != null) {
-                LOGGER.warn("Error processing request: " + horizonContext.getFailureCause().getMessage());
+                LOGGER.warn("Error processing request: {}", horizonContext.getFailureCause().getMessage());
                 return adapter.createErrorResponse(horizonContext.getFailureCause(), context);
             }
             
@@ -194,7 +194,8 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             // Convert the output to a protocol-specific response
             return adapter.convertToResponse(output, context);
         } catch (Exception e) {
-            LOGGER.error("Error handling message: " + e.getMessage());
+            LOGGER.error("Error handling message: {}", e.getMessage());
+            LOGGER.error("",e);
             return adapter.createErrorResponse(e, context);
         }
     }

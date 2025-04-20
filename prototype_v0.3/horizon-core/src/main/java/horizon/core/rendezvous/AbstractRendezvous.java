@@ -74,7 +74,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
     @Override
     public HorizonContext encounter(I input) throws IllegalArgumentException, NullPointerException {
         Objects.requireNonNull(input, "input must not be null");
-        LOGGER.debug("Encountering input from source: " + input.getSource());
+        LOGGER.debug("Encountering input from source: {}", input.getSource());
 
         try {
             // Process input through sentinels
@@ -104,7 +104,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
     @Override
     public O fallAway(HorizonContext context) throws IllegalArgumentException, NullPointerException {
         Objects.requireNonNull(context, "context must not be null");
-        LOGGER.debug("Falling away context: " + context.getTraceId());
+        LOGGER.debug("Falling away context: {}", context.getTraceId());
 
         try {
             // Process context through sentinels
