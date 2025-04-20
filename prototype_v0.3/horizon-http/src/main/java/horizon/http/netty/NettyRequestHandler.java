@@ -65,7 +65,7 @@ public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboun
                 
                 // Check if the request should be allowed
                 if (!foyer.allow(input)) {
-                    LOGGER.warn("Request from " + remoteAddress + " was denied by the foyer");
+                    LOGGER.warn("Request from {} was denied by the foyer", remoteAddress);
                     return createForbiddenResponse(keepAlive);
                 }
                 
@@ -74,7 +74,7 @@ public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboun
                 
                 // If the context has a failure cause, return an error response
                 if (context.getFailureCause() != null) {
-                    LOGGER.warn("Error processing request: " + context.getFailureCause().getMessage());
+                    LOGGER.warn("Error processing request: {}", context.getFailureCause().getMessage());
                     return createErrorResponse(context.getFailureCause(), keepAlive);
                 }
                 
