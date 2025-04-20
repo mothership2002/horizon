@@ -1,9 +1,12 @@
 package horizon.demo.http;
 
 import horizon.core.model.HorizonContext;
-import horizon.core.rendezvous.Rendezvous;
+import horizon.core.rendezvous.AbstractRendezvous;
+import horizon.core.rendezvous.Sentinel;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -11,47 +14,60 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A simple implementation of Rendezvous for HTTP requests.
+ * This class extends AbstractRendezvous to leverage its functionality.
  */
-public class SimpleHttpRendezvous implements Rendezvous<SimpleHttpInput, SimpleHttpOutput> {
+public class SimpleHttpRendezvous extends AbstractRendezvous<SimpleHttpInput, SimpleHttpInput, String, Map<String, Object>, SimpleHttpOutput> {
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleHttpRendezvous.class);
 
     /**
-     * Creates a context from the given raw input.
+     * Creates a new SimpleHttpRendezvous with default components.
+     */
+    public SimpleHttpRendezvous() {
+        super(
+            Collections.singletonList(new SimpleHttpSentinel()),
+            new SimpleHttpNormalizer(),
+            new SimpleHttpInterpreter()
+        );
+        LOGGER.info("SimpleHttpRendezvous initialized");
+    }
+
+    /**
+     * Creates a new SimpleHttpRendezvous with custom components.
      *
-     * @param input the raw input to process
-     * @return a context initialized with data from the input
-     * @throws IllegalArgumentException if the input is invalid
-     * @throws NullPointerException if the input is null
+     * @param sentinels the sentinels to use
+     * @param normalizer the normalizer to use
+     * @param interpreter the interpreter to use
+     */
+    public SimpleHttpRendezvous(
+            List<Sentinel<SimpleHttpInput>> sentinels,
+            SimpleHttpNormalizer normalizer,
+            SimpleHttpInterpreter interpreter) {
+        super(sentinels, normalizer, interpreter);
+    }
+
+    /**
+     * Customizes the context before returning it from the encounter method.
+     * This method is called by AbstractRendezvous.encounter().
+     *
+     * @param context the context to customize
+     * @return the customized context
      */
     @Override
-    public HorizonContext encounter(SimpleHttpInput input) throws IllegalArgumentException, NullPointerException {
-        Objects.requireNonNull(input, "input must not be null");
-        LOGGER.info("Received HTTP request: " + input.getMethod() + " " + input.getPath() + " from " + input.getSource());
-
-        // Create a new context with the input
-        HorizonContext context = new HorizonContext(input);
-
-        // Store HTTP request details in the intent payload
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("path", input.getPath());
-        payload.put("method", input.getMethod());
-        payload.put("body", input.getBodyAsString());
-        context.setIntentPayload(payload);
-
+    protected HorizonContext customizeContext(HorizonContext context) {
+        LOGGER.debug("Customizing context for HTTP request");
         return context;
     }
 
     /**
-     * Finalizes the output from the given context.
+     * Gets the rendered output from the context.
+     * This method is called by AbstractRendezvous.fallAway().
      *
-     * @param context the context containing the result
-     * @return raw output containing the finalized result
-     * @throws IllegalArgumentException if the context is invalid
-     * @throws NullPointerException if the context is null
+     * @param context the context
+     * @return the rendered output
      */
     @Override
-    public SimpleHttpOutput fallAway(HorizonContext context) throws IllegalArgumentException, NullPointerException {
-        Objects.requireNonNull(context, "context must not be null");
+    protected SimpleHttpOutput getRenderedOutput(HorizonContext context) {
+        LOGGER.debug("Getting rendered output for HTTP response");
 
         // Check if the context has a failure cause
         if (context.getFailureCause() != null) {
@@ -86,5 +102,19 @@ public class SimpleHttpRendezvous implements Rendezvous<SimpleHttpInput, SimpleH
         } else {
             return new SimpleHttpOutput("Not Found: " + path, 404, "text/plain");
         }
+    }
+
+    /**
+     * Customizes the output before returning it from the fallAway method.
+     * This method is called by AbstractRendezvous.fallAway().
+     *
+     * @param output the output to customize
+     * @param context the context
+     * @return the customized output
+     */
+    @Override
+    protected SimpleHttpOutput customizeOutput(SimpleHttpOutput output, HorizonContext context) {
+        LOGGER.debug("Customizing output for HTTP response");
+        return output;
     }
 }
