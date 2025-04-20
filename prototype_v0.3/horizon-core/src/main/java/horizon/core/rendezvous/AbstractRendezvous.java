@@ -14,9 +14,9 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
     protected final Interpreter<N, K, P> interpreter;
 
     public AbstractRendezvous(List<Sentinel<I>> sentinels, Normalizer<I, N> normalizer, Interpreter<N, K, P> interpreter) {
-        this.sentinels = List.copyOf(Objects.requireNonNull(sentinels));
-        this.normalizer = normalizer;
-        this.interpreter = interpreter;
+        this.sentinels = List.copyOf(Objects.requireNonNull(sentinels, "sentinels"));
+        this.normalizer = Objects.requireNonNull(normalizer, "normalizer");
+        this.interpreter = Objects.requireNonNull(interpreter, "interpreter");
     }
 
     public HorizonContext encounter(I input) {
@@ -35,6 +35,10 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
 
     @Override
     public O fallAway(HorizonContext context) {
-        return null;
+        for (Sentinel<I> s : sentinels) s.inspectOutbound(context);
+        return Objects.requireNonNull(
+                (O) context.getRenderedOutput(),
+                "No renderedOutput set in HorizonContext"
+        );
     }
 }

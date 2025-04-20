@@ -17,14 +17,12 @@ public class HorizonSystemContext {
 
     private final Map<Scheme, HorizonRuntimeUnit<?, ?, ?, ?, ?>> runtimeUnits = new HashMap<>();
 
-    public <I extends RawInput, N, K, P, O extends RawOutput>
-    void registerUnit(Scheme scheme, HorizonRuntimeUnit<I, N, K, P, O> unit) {
+    public <I extends RawInput, N, K, P, O extends RawOutput> void registerUnit(Scheme scheme, HorizonRuntimeUnit<I, N, K, P, O> unit) {
         runtimeUnits.put(scheme, unit);
     }
 
     @SuppressWarnings("unchecked")
-    public <I extends RawInput, N, K, P, O extends RawOutput>
-    Optional<HorizonRuntimeUnit<I, N, K, P, O>> resolveUnit(Scheme scheme) {
+    public <I extends RawInput, N, K, P, O extends RawOutput> Optional<HorizonRuntimeUnit<I, N, K, P, O>> resolveUnit(Scheme scheme) {
         return Optional.ofNullable((HorizonRuntimeUnit<I, N, K, P, O>) runtimeUnits.get(scheme));
     }
 }
