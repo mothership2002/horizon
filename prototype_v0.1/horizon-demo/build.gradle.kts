@@ -13,7 +13,6 @@ dependencies {
     implementation(project(":horizon-web"))
     implementation(project(":horizon-app"))
     implementation(project(":horizon-data"))
-
 }
 
 java {

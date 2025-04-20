@@ -18,8 +18,8 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A Netty channel handler that processes HTTP requests by converting them to raw input
@@ -28,7 +28,7 @@ import java.util.logging.Logger;
  * @param <I> the type of raw input this handler can handle
  */
 public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboundHandler<FullHttpRequest> {
-    private static final Logger LOGGER = Logger.getLogger(NettyRequestHandler.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyRequestHandler.class);
     private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool();
 
     private final Foyer<I> foyer;
@@ -65,7 +65,7 @@ public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboun
                 
                 // Check if the request should be allowed
                 if (!foyer.allow(input)) {
-                    LOGGER.warning("Request from " + remoteAddress + " was denied by the foyer");
+                    LOGGER.warn("Request from {} was denied by the foyer", remoteAddress);
                     return createForbiddenResponse(keepAlive);
                 }
                 
@@ -74,7 +74,7 @@ public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboun
                 
                 // If the context has a failure cause, return an error response
                 if (context.getFailureCause() != null) {
-                    LOGGER.warning("Error processing request: " + context.getFailureCause().getMessage());
+                    LOGGER.warn("Error processing request: {}", context.getFailureCause().getMessage());
                     return createErrorResponse(context.getFailureCause(), keepAlive);
                 }
                 
@@ -84,7 +84,7 @@ public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboun
                 // Convert the output to an HTTP response
                 return createSuccessResponse(output, keepAlive);
             } catch (Exception e) {
-                LOGGER.log(Level.SEVERE, "Error handling request: " + e.getMessage(), e);
+                LOGGER.error("Error handling request: {}", e.getMessage(), e);
                 return createErrorResponse(e, keepAlive);
             }
         }, EXECUTOR).thenAccept(response -> {
@@ -96,7 +96,7 @@ public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboun
                 ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
             }
         }).exceptionally(e -> {
-            LOGGER.log(Level.SEVERE, "Error sending response: " + e.getMessage(), e);
+            LOGGER.error("Error sending response: {}", e.getMessage(), e);
             ctx.close();
             return null;
         });
@@ -104,7 +104,7 @@ public class NettyRequestHandler<I extends RawInput> extends SimpleChannelInboun
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        LOGGER.log(Level.SEVERE, "Channel exception: " + cause.getMessage(), cause);
+        LOGGER.error("Channel exception: {}", cause.getMessage(), cause);
         ctx.close();
     }
 

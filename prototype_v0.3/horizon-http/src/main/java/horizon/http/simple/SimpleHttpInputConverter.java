@@ -1,4 +1,4 @@
-package horizon.demo.http;
+package horizon.http.simple;
 
 import horizon.http.netty.NettyInputConverter;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -35,7 +35,9 @@ public class SimpleHttpInputConverter implements NettyInputConverter<SimpleHttpI
 
         // Get the body
         byte[] body = new byte[request.content().readableBytes()];
-        request.content().getBytes(request.content().readerIndex(), body);
+        if (body.length != 0) {
+            request.content().getBytes(request.content().readerIndex(), body);
+        }
 
         // Create and return the SimpleHttpInput
         return new SimpleHttpInput(remoteAddress, "http", body, path, method);
