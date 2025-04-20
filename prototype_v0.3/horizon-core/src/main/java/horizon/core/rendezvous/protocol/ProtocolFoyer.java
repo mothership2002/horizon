@@ -6,7 +6,8 @@ import horizon.core.rendezvous.Foyer;
 import horizon.core.rendezvous.Rendezvous;
 
 import java.util.Objects;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A protocol-agnostic implementation of the Foyer interface.
@@ -19,7 +20,7 @@ import java.util.logging.Logger;
  * @param <R> the type of protocol-specific outgoing response
  */
 public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, R> implements Foyer<I> {
-    private static final Logger LOGGER = Logger.getLogger(ProtocolFoyer.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProtocolFoyer.class);
 
     protected final int port;
     protected final Rendezvous<I, O> rendezvous;
@@ -67,7 +68,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
     @Override
     public void initialize() {
         if (initialized) {
-            LOGGER.warning(protocol.getName() + " foyer is already initialized");
+            LOGGER.warn(protocol.getName() + " foyer is already initialized");
             return;
         }
 
@@ -83,7 +84,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             initialized = true;
             LOGGER.info(protocol.getName() + " foyer initialized and listening on port " + port);
         } catch (Exception e) {
-            LOGGER.severe("Failed to initialize " + protocol.getName() + " foyer: " + e.getMessage());
+            LOGGER.error("Failed to initialize " + protocol.getName() + " foyer: " + e.getMessage());
             shutdown();
             throw new RuntimeException("Failed to initialize " + protocol.getName() + " foyer", e);
         }
@@ -95,7 +96,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
     @Override
     public void shutdown() {
         if (!initialized) {
-            LOGGER.warning(protocol.getName() + " foyer is not initialized");
+            LOGGER.warn(protocol.getName() + " foyer is not initialized");
             return;
         }
 
@@ -111,7 +112,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             initialized = false;
             LOGGER.info(protocol.getName() + " foyer shut down successfully");
         } catch (Exception e) {
-            LOGGER.severe("Error shutting down " + protocol.getName() + " foyer: " + e.getMessage());
+            LOGGER.error("Error shutting down " + protocol.getName() + " foyer: " + e.getMessage());
         }
     }
 
@@ -174,7 +175,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             
             // Check if the request should be allowed
             if (!allow(input)) {
-                LOGGER.warning("Request from " + remoteAddress + " was denied by the foyer");
+                LOGGER.warn("Request from " + remoteAddress + " was denied by the foyer");
                 return adapter.createForbiddenResponse(context);
             }
             
@@ -183,7 +184,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             
             // If the context has a failure cause, return an error response
             if (horizonContext.getFailureCause() != null) {
-                LOGGER.warning("Error processing request: " + horizonContext.getFailureCause().getMessage());
+                LOGGER.warn("Error processing request: " + horizonContext.getFailureCause().getMessage());
                 return adapter.createErrorResponse(horizonContext.getFailureCause(), context);
             }
             
@@ -193,7 +194,7 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             // Convert the output to a protocol-specific response
             return adapter.convertToResponse(output, context);
         } catch (Exception e) {
-            LOGGER.severe("Error handling message: " + e.getMessage());
+            LOGGER.error("Error handling message: " + e.getMessage());
             return adapter.createErrorResponse(e, context);
         }
     }

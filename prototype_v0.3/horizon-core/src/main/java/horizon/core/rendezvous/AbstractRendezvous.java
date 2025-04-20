@@ -11,8 +11,8 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An abstract implementation of the Rendezvous interface that provides
@@ -28,7 +28,7 @@ import java.util.logging.Logger;
  * @param <O> the type of raw output this rendezvous produces
  */
 public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends RawOutput> implements Rendezvous<I, O> {
-    private static final Logger LOGGER = Logger.getLogger(AbstractRendezvous.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractRendezvous.class);
 
     protected final List<Sentinel<I>> sentinels;
     protected final Normalizer<I, N> normalizer;
@@ -74,7 +74,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
     @Override
     public HorizonContext encounter(I input) throws IllegalArgumentException, NullPointerException {
         Objects.requireNonNull(input, "input must not be null");
-        LOGGER.fine("Encountering input from source: " + input.getSource());
+        LOGGER.debug("Encountering input from source: " + input.getSource());
 
         try {
             // Process input through sentinels
@@ -93,7 +93,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
             // Allow subclasses to customize the context
             return customizeContext(context);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error encountering input: " + e.getMessage(), e);
+            LOGGER.error("Error encountering input: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -104,7 +104,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
     @Override
     public O fallAway(HorizonContext context) throws IllegalArgumentException, NullPointerException {
         Objects.requireNonNull(context, "context must not be null");
-        LOGGER.fine("Falling away context: " + context.getTraceId());
+        LOGGER.debug("Falling away context: " + context.getTraceId());
 
         try {
             // Process context through sentinels
@@ -116,7 +116,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
             // Allow subclasses to customize the output
             return customizeOutput(output, context);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error falling away context: " + e.getMessage(), e);
+            LOGGER.error("Error falling away context: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -127,7 +127,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
     @Override
     public HorizonContext handleError(Exception e, I input) {
         Objects.requireNonNull(input, "input must not be null");
-        LOGGER.log(Level.WARNING, "Handling error: " + e.getMessage(), e);
+        LOGGER.warn("Handling error: {}", e.getMessage(), e);
 
         HorizonContext context = new HorizonContext(input);
         context.setFailureCause(e);
@@ -141,7 +141,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
      * @param input the input to process
      */
     protected void processSentinelsInbound(I input) {
-        LOGGER.fine("Processing input through sentinels");
+        LOGGER.debug("Processing input through sentinels");
 
         if (parallelSentinelProcessing && sentinels.size() > 1) {
             // Process sentinels in parallel
@@ -167,7 +167,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
      * @param context the context to process
      */
     protected void processSentinelsOutbound(HorizonContext context) {
-        LOGGER.fine("Processing context through sentinels");
+        LOGGER.debug("Processing context through sentinels");
 
         if (parallelSentinelProcessing && sentinels.size() > 1) {
             // Process sentinels in parallel
@@ -194,7 +194,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
      * @return the normalized input
      */
     protected N normalizeInput(I input) {
-        LOGGER.fine("Normalizing input");
+        LOGGER.debug("Normalizing input");
         return normalizer.normalize(input);
     }
 
@@ -206,7 +206,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
      * @return the intent key
      */
     protected K extractIntentKey(N normalized) {
-        LOGGER.fine("Extracting intent key");
+        LOGGER.debug("Extracting intent key");
         return interpreter.extractIntentKey(normalized);
     }
 
@@ -218,7 +218,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
      * @return the intent payload
      */
     protected P extractIntentPayload(N normalized) {
-        LOGGER.fine("Extracting intent payload");
+        LOGGER.debug("Extracting intent payload");
         return interpreter.extractIntentPayload(normalized);
     }
 
@@ -232,7 +232,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
      * @return the created context
      */
     protected HorizonContext createContext(I input, K key, P payload) {
-        LOGGER.fine("Creating context");
+        LOGGER.debug("Creating context");
 
         HorizonContext context = new HorizonContext(input);
         context.setParsedIntent(key != null ? key.toString() : null);
@@ -263,7 +263,7 @@ public abstract class AbstractRendezvous<I extends RawInput, N, K, P, O extends 
      */
     @SuppressWarnings("unchecked")
     protected O getRenderedOutput(HorizonContext context) {
-        LOGGER.fine("Getting rendered output");
+        LOGGER.debug("Getting rendered output");
 
         return Objects.requireNonNull(
                 (O) context.getRenderedOutput(),

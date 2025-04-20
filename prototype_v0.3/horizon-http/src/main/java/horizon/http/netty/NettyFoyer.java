@@ -14,8 +14,8 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 import java.util.Objects;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A Netty-based implementation of the Foyer interface.
@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  * @param <I> the type of raw input this foyer can handle
  */
 public class NettyFoyer<I extends RawInput> implements Foyer<I> {
-    private static final Logger LOGGER = Logger.getLogger(NettyFoyer.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyFoyer.class);
 
     private final int port;
     private final Rendezvous<I, ?> rendezvous;
@@ -69,7 +69,7 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
     @Override
     public void initialize() {
         if (initialized) {
-            LOGGER.warning("NettyFoyer is already initialized");
+            LOGGER.warn("NettyFoyer is already initialized");
             return;
         }
 
@@ -100,7 +100,7 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
             
             LOGGER.info("NettyFoyer initialized and listening on port " + port);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to initialize NettyFoyer: " + e.getMessage(), e);
+            LOGGER.error("Failed to initialize NettyFoyer: " + e.getMessage(), e);
             shutdown();
             throw new RuntimeException("Failed to initialize NettyFoyer", e);
         }
@@ -112,7 +112,7 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
     @Override
     public void shutdown() {
         if (!initialized) {
-            LOGGER.warning("NettyFoyer is not initialized");
+            LOGGER.warn("NettyFoyer is not initialized");
             return;
         }
 
@@ -137,7 +137,7 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
             initialized = false;
             LOGGER.info("NettyFoyer shut down successfully");
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error shutting down NettyFoyer: " + e.getMessage(), e);
+            LOGGER.error("Error shutting down NettyFoyer: " + e.getMessage(), e);
         }
     }
 

@@ -18,8 +18,8 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of the ProtocolFoyer for Netty HTTP.
@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 public class NettyHttpFoyer<I extends RawInput, O extends RawOutput> 
         extends ProtocolFoyer<I, O, FullHttpRequest, FullHttpResponse> {
     
-    private static final Logger LOGGER = Logger.getLogger(NettyHttpFoyer.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyHttpFoyer.class);
     private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool(
             new DefaultThreadFactory("netty-http-handler"));
     
@@ -132,7 +132,7 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
                     ctx.close();
                 }
             }).exceptionally(e -> {
-                LOGGER.log(Level.SEVERE, "Error sending response: " + e.getMessage(), e);
+                LOGGER.error("Error sending response: {}", e.getMessage(), e);
                 ctx.close();
                 return null;
             });
@@ -140,7 +140,7 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-            LOGGER.log(Level.SEVERE, "Channel exception: " + cause.getMessage(), cause);
+            LOGGER.error("Channel exception: {}", cause.getMessage(), cause);
             ctx.close();
         }
     }
