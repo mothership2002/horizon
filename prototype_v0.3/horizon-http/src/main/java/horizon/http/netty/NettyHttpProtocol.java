@@ -1,14 +1,14 @@
-package horizon.core.rendezvous.websocket;
+package horizon.http.netty;
 
 import horizon.core.rendezvous.protocol.Protocol;
 
 /**
- * Implementation of the Protocol interface for WebSocket.
- * This class represents the WebSocket protocol.
+ * Implementation of the Protocol interface for Netty HTTP.
+ * This class represents the HTTP protocol implemented using Netty.
  */
-public class WebSocketProtocol implements Protocol {
-    private static final String PROTOCOL_NAME = "websocket";
-    private static final int DEFAULT_PORT = 8081;
+public class NettyHttpProtocol implements Protocol {
+    private static final String PROTOCOL_NAME = "http";
+    private static final int DEFAULT_PORT = 8080;
     
     private boolean initialized = false;
 

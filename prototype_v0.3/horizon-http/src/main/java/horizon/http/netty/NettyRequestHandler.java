@@ -1,4 +1,4 @@
-package horizon.core.rendezvous.netty;
+package horizon.http.netty;
 
 import horizon.core.model.HorizonContext;
 import horizon.core.model.RawInput;

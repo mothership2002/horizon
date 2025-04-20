@@ -4,10 +4,6 @@ import horizon.core.constant.Scheme;
 import horizon.core.model.RawInput;
 import horizon.core.model.RawOutput;
 import horizon.core.rendezvous.Foyer;
-import horizon.core.rendezvous.netty.NettyFoyer;
-import horizon.core.rendezvous.netty.NettyHttpAdapter;
-import horizon.core.rendezvous.netty.NettyHttpFoyer;
-import horizon.core.rendezvous.netty.NettyInputConverter;
 import horizon.core.rendezvous.protocol.ProtocolAdapter;
 import horizon.core.rendezvous.protocol.ProtocolFoyer;
 
@@ -323,27 +319,26 @@ public class HorizonSystemContext {
     }
 
     /**
-     * Creates and registers a NettyFoyer for the specified scheme.
-     * This is a convenience method that creates a NettyFoyer and registers it with this context.
-     *
+     * Creates and registers a protocol foyer for the specified scheme.
+     * This is a convenience method that creates a protocol foyer and registers it with this context.
+     * 
      * @param <I> the type of raw input
      * @param <O> the type of raw output
+     * @param <F> the type of foyer to create
      * @param scheme the scheme to register the foyer for
      * @param port the port to listen on
-     * @param inputConverter the converter to convert Netty requests to raw input
-     * @return the created NettyFoyer
-     * @throws NullPointerException if scheme, rendezvous, or inputConverter is null
-     * @throws IllegalArgumentException if port is invalid
+     * @param foyerFactory a factory function that creates the foyer with the specified port and rendezvous
+     * @return the created foyer
+     * @throws NullPointerException if scheme or foyerFactory is null
+     * @throws IllegalArgumentException if port is invalid or no runtime unit is registered for the scheme
      * @throws IllegalStateException if the context is not initialized or has been shut down
-     * @deprecated Use {@link #createAndRegisterFoyer(Scheme, FoyerFactory)} with a NettyHttpFoyer factory instead
      */
-    @Deprecated
     @SuppressWarnings("unchecked")
-    public <I extends RawInput, O extends RawOutput> NettyFoyer<I> createAndRegisterNettyFoyer(
-            Scheme scheme, int port, NettyInputConverter<I> inputConverter) {
+    public <I extends RawInput, O extends RawOutput, F extends ProtocolFoyer<I, O, ?, ?>> F createAndRegisterProtocolFoyer(
+            Scheme scheme, int port, PortFoyerFactory<I, O, F> foyerFactory) {
         checkInitialized();
         Objects.requireNonNull(scheme, "scheme must not be null");
-        Objects.requireNonNull(inputConverter, "inputConverter must not be null");
+        Objects.requireNonNull(foyerFactory, "foyerFactory must not be null");
 
         // Resolve the runtime unit for the scheme
         var unitOpt = resolveUnit(scheme);
@@ -355,8 +350,8 @@ public class HorizonSystemContext {
         var unit = (HorizonRuntimeUnit<I, ?, ?, ?, O>) unitOpt.get();
         var rendezvous = unit.getRendezvousDescriptor().rendezvous();
 
-        // Create the NettyFoyer
-        NettyFoyer<I> foyer = new NettyFoyer<>(port, rendezvous, inputConverter);
+        // Create the foyer using the factory
+        F foyer = foyerFactory.create(port, rendezvous);
 
         // Register the foyer
         registerFoyer(scheme, foyer);
@@ -365,44 +360,22 @@ public class HorizonSystemContext {
     }
 
     /**
-     * Creates and registers a NettyHttpFoyer for the specified scheme.
-     * This is a convenience method that creates a NettyHttpFoyer and registers it with this context.
+     * A functional interface for creating foyers with a port.
      *
      * @param <I> the type of raw input
      * @param <O> the type of raw output
-     * @param scheme the scheme to register the foyer for
-     * @param port the port to listen on
-     * @param inputConverter the converter to convert Netty requests to raw input
-     * @return the created NettyHttpFoyer
-     * @throws NullPointerException if scheme or inputConverter is null
-     * @throws IllegalArgumentException if port is invalid or no runtime unit is registered for the scheme
-     * @throws IllegalStateException if the context is not initialized or has been shut down
+     * @param <F> the type of foyer to create
      */
-    @SuppressWarnings("unchecked")
-    public <I extends RawInput, O extends RawOutput> NettyHttpFoyer<I, O> createAndRegisterNettyHttpFoyer(
-            Scheme scheme, int port, NettyInputConverter<I> inputConverter) {
-        checkInitialized();
-        Objects.requireNonNull(scheme, "scheme must not be null");
-        Objects.requireNonNull(inputConverter, "inputConverter must not be null");
-
-        // Resolve the runtime unit for the scheme
-        var unitOpt = resolveUnit(scheme);
-        if (unitOpt.isEmpty()) {
-            throw new IllegalArgumentException("No runtime unit registered for scheme: " + scheme);
-        }
-
-        // Get the rendezvous from the runtime unit
-        var unit = (HorizonRuntimeUnit<I, ?, ?, ?, O>) unitOpt.get();
-        var rendezvous = unit.getRendezvousDescriptor().rendezvous();
-
-        // Create the adapter and foyer
-        NettyHttpAdapter<I, O> adapter = new NettyHttpAdapter<>(inputConverter);
-        NettyHttpFoyer<I, O> foyer = new NettyHttpFoyer<>(port, rendezvous, adapter);
-
-        // Register the foyer
-        registerFoyer(scheme, foyer);
-
-        return foyer;
+    @FunctionalInterface
+    public interface PortFoyerFactory<I extends RawInput, O extends RawOutput, F extends Foyer<I>> {
+        /**
+         * Creates a foyer with the specified port and rendezvous.
+         *
+         * @param port the port to listen on
+         * @param rendezvous the rendezvous to pass requests to
+         * @return the created foyer
+         */
+        F create(int port, horizon.core.rendezvous.Rendezvous<I, O> rendezvous);
     }
 
     /**
