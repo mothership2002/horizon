@@ -1,6 +1,7 @@
 package horizon.core.context;
 
 import horizon.core.constant.Scheme;
+import horizon.core.engine.HorizonFlowEngine;
 import horizon.core.model.RawInput;
 import horizon.core.model.RawOutput;
 import horizon.core.rendezvous.AbstractRendezvous;
@@ -26,6 +27,7 @@ public class HorizonSystemContext {
 
     private final Map<Scheme, HorizonRuntimeUnit<?, ?, ?, ?, ?>> runtimeUnits = new ConcurrentHashMap<>();
     private final Map<Scheme, Foyer<?>> foyers = new ConcurrentHashMap<>();
+    private HorizonFlowEngine flowEngine;
     private boolean initialized = false;
     private boolean shutdown = false;
 
@@ -405,5 +407,43 @@ public class HorizonSystemContext {
         if (shutdown) {
             throw new IllegalStateException("HorizonSystemContext has been shut down");
         }
+    }
+
+    /**
+     * Initializes the Flow Engine for this system context.
+     * This method should be called after the system context is initialized.
+     * 
+     * @return the initialized Flow Engine
+     * @throws IllegalStateException if the context is not initialized or has been shut down
+     */
+    public HorizonFlowEngine initializeFlowEngine() {
+        checkInitialized();
+
+        if (flowEngine == null) {
+            LOGGER.info("Initializing Flow Engine");
+            flowEngine = new HorizonFlowEngine(this);
+            LOGGER.info("Flow Engine initialized");
+        } else {
+            LOGGER.warn("Flow Engine is already initialized");
+        }
+
+        return flowEngine;
+    }
+
+    /**
+     * Gets the Flow Engine for this system context.
+     * If the Flow Engine has not been initialized, it will be initialized.
+     * 
+     * @return the Flow Engine
+     * @throws IllegalStateException if the context is not initialized or has been shut down
+     */
+    public HorizonFlowEngine getFlowEngine() {
+        checkInitialized();
+
+        if (flowEngine == null) {
+            return initializeFlowEngine();
+        }
+
+        return flowEngine;
     }
 }

@@ -1,5 +1,6 @@
 package horizon.core.engine;
 
+import horizon.core.annotation.Intent;
 import horizon.core.command.Command;
 import horizon.core.conductor.Conductor;
 import horizon.core.constant.Scheme;
@@ -11,6 +12,9 @@ import horizon.core.model.RawOutput;
 import horizon.core.rendezvous.Rendezvous;
 import horizon.core.stage.StageHandler;
 
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -29,6 +33,7 @@ public class HorizonFlowEngine {
 
     private final HorizonSystemContext systemContext;
     private final PerformanceMonitor performanceMonitor;
+    private final Map<String, Map<String, Method>> intentMethodCache = new HashMap<>();
 
     /**
      * Creates a new HorizonFlowEngine with the given system context.
@@ -55,7 +60,7 @@ public class HorizonFlowEngine {
      */
     public RawOutput run(RawInput input) {
         Objects.requireNonNull(input, "input must not be null");
-        LOGGER.info("Starting flow for input from source: " + input.getSource());
+        LOGGER.info("Starting flow for input from source: {}", input.getSource());
 
         long startTime = System.currentTimeMillis();
         try {
@@ -125,7 +130,7 @@ public class HorizonFlowEngine {
      * @return the created context
      */
     private HorizonContext createContext(RawInput input, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit) {
-        LOGGER.info("Creating context for input from source: " + input.getSource());
+        LOGGER.info("Creating context for input from source: {}", input.getSource());
 
         @SuppressWarnings("unchecked")
         Rendezvous<RawInput, RawOutput> rendezvous =
@@ -148,7 +153,7 @@ public class HorizonFlowEngine {
      * @throws IllegalStateException if no conductor is found for the parsed intent
      */
     private HorizonContext executeCommand(HorizonContext context, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit) {
-        LOGGER.info("Executing command for intent: " + context.getParsedIntent());
+        LOGGER.info("Executing command for intent: {}", context.getParsedIntent());
 
         if (context.hasFailed()) {
             LOGGER.warn("Context has failed, skipping command execution");
@@ -166,7 +171,15 @@ public class HorizonFlowEngine {
                                 return new IllegalStateException(message);
                             });
 
-            Command<?> command = conductor.resolve(context.getIntentPayload());
+            // Try to find a method annotated with @Intent that matches the parsed intent
+            Command<?> command = findAndInvokeIntentMethod(conductor, parsedIntent, context.getIntentPayload());
+
+            // If no matching method is found, fall back to the resolve method
+            if (command == null) {
+                LOGGER.debug("No @Intent method found for intent {}, falling back to resolve method", parsedIntent);
+                command = conductor.resolve(context.getIntentPayload());
+            }
+
             Object result = command.execute();
             context.setExecutionResult(result);
 
@@ -179,6 +192,82 @@ public class HorizonFlowEngine {
     }
 
     /**
+     * Finds a method annotated with @Intent that matches the given intent name and invokes it.
+     *
+     * @param conductor the conductor instance
+     * @param intentName the intent name to match
+     * @param payload the payload to pass to the method
+     * @return the command returned by the method, or null if no matching method is found
+     */
+    private Command<?> findAndInvokeIntentMethod(Conductor<?> conductor, String intentName, Object payload) {
+        Class<?> conductorClass = conductor.getClass();
+        String className = conductorClass.getName();
+
+        // Check if the class is annotated with @Conductor
+        horizon.core.annotation.Conductor conductorAnnotation = 
+                conductorClass.getAnnotation(horizon.core.annotation.Conductor.class);
+
+        if (conductorAnnotation == null) {
+            LOGGER.debug("Conductor class {} is not annotated with @Conductor", className);
+            return null;
+        }
+
+        // Get the namespace from the @Conductor annotation
+        String namespace = conductorAnnotation.namespace();
+
+        // If the intent name starts with the namespace, remove it
+        String methodIntentName = intentName;
+        if (!namespace.isEmpty() && intentName.startsWith(namespace)) {
+            methodIntentName = intentName.substring(namespace.length());
+            // Remove leading dot or slash if present
+            if (methodIntentName.startsWith(".") || methodIntentName.startsWith("/")) {
+                methodIntentName = methodIntentName.substring(1);
+            }
+        }
+
+        // Check if we have cached the methods for this class
+        Map<String, Method> methodMap = intentMethodCache.get(className);
+        if (methodMap == null) {
+            // Cache the methods for this class
+            methodMap = new HashMap<>();
+            intentMethodCache.put(className, methodMap);
+
+            // Scan the class for methods annotated with @Intent
+            for (Method method : conductorClass.getMethods()) {
+                Intent intentAnnotation = method.getAnnotation(Intent.class);
+                if (intentAnnotation == null) {
+                    continue;
+                }
+
+                // Get the intent name from the annotation
+                String annotationValue = intentAnnotation.value();
+                if (annotationValue.isEmpty()) {
+                    annotationValue = intentAnnotation.name();
+                }
+
+                methodMap.put(annotationValue, method);
+            }
+        }
+
+        // Look for a method that matches the intent name
+        Method method = methodMap.get(methodIntentName);
+        if (method != null) {
+            try {
+                // Invoke the method with the payload
+                if (method.getParameterCount() == 0) {
+                    return (Command<?>) method.invoke(conductor);
+                } else {
+                    return (Command<?>) method.invoke(conductor, payload);
+                }
+            } catch (Exception e) {
+                LOGGER.error("Error invoking @Intent method: {}", e.getMessage(), e);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Handles the result for the given context using the specified runtime unit.
      *
      * @param context the context to process
@@ -187,7 +276,7 @@ public class HorizonFlowEngine {
      * @throws IllegalStateException if no stage handler is found for the command's key
      */
     private RawOutput handleResult(HorizonContext context, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit) {
-        LOGGER.info("Handling result for context: " + context.getTraceId());
+        LOGGER.info("Handling result for context: {}", context.getTraceId());
 
         if (context.hasFailed()) {
             LOGGER.warn("Context has failed, creating error response");
@@ -231,7 +320,7 @@ public class HorizonFlowEngine {
      * @return the finalized raw output
      */
     private RawOutput finalizeOutput(HorizonContext context, HorizonRuntimeUnit<?, ?, ?, ?, ?> unit, RawOutput output) {
-        LOGGER.info("Finalizing output for context: " + context.getTraceId());
+        LOGGER.info("Finalizing output for context: {}", context.getTraceId());
 
         try {
             @SuppressWarnings("unchecked")

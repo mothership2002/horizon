@@ -1,5 +1,6 @@
 package horizon.http.netty;
 
+import horizon.core.context.HorizonSystemContext;
 import horizon.core.model.RawInput;
 import horizon.core.model.RawOutput;
 import horizon.core.rendezvous.Rendezvous;
@@ -30,17 +31,32 @@ import org.slf4j.LoggerFactory;
  */
 public class NettyHttpFoyer<I extends RawInput, O extends RawOutput> 
         extends ProtocolFoyer<I, O, FullHttpRequest, FullHttpResponse> {
-    
+
     private static final Logger LOGGER = LoggerFactory.getLogger(NettyHttpFoyer.class);
     private static final ExecutorService EXECUTOR = Executors.newCachedThreadPool(
             new DefaultThreadFactory("netty-http-handler"));
-    
+
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
     private Channel serverChannel;
 
     /**
+     * Creates a new NettyHttpFoyer with the specified port, rendezvous, adapter, and system context.
+     *
+     * @param port the port to listen on, or 0 to use the protocol's default port
+     * @param rendezvous the rendezvous to pass requests to
+     * @param adapter the adapter to convert between HTTP requests/responses and Horizon's RawInput/RawOutput
+     * @param systemContext the system context, or null if not available
+     * @throws NullPointerException if rendezvous or adapter is null
+     * @throws IllegalArgumentException if port is invalid
+     */
+    public NettyHttpFoyer(int port, Rendezvous<I, O> rendezvous, NettyHttpAdapter<I, O> adapter, HorizonSystemContext systemContext) {
+        super(port, rendezvous, adapter, new NettyHttpProtocol(), systemContext);
+    }
+
+    /**
      * Creates a new NettyHttpFoyer with the specified port, rendezvous, and adapter.
+     * This constructor is provided for backward compatibility.
      *
      * @param port the port to listen on, or 0 to use the protocol's default port
      * @param rendezvous the rendezvous to pass requests to
@@ -49,7 +65,7 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
      * @throws IllegalArgumentException if port is invalid
      */
     public NettyHttpFoyer(int port, Rendezvous<I, O> rendezvous, NettyHttpAdapter<I, O> adapter) {
-        super(port, rendezvous, adapter, new NettyHttpProtocol());
+        this(port, rendezvous, adapter, null);
     }
 
     /**
@@ -58,10 +74,10 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
     @Override
     protected void initializeServer() throws Exception {
         LOGGER.info("Initializing Netty HTTP server on port {}", getPort());
-        
+
         bossGroup = new NioEventLoopGroup(1, new DefaultThreadFactory("netty-http-boss"));
         workerGroup = new NioEventLoopGroup(0, new DefaultThreadFactory("netty-http-worker"));
-        
+
         ServerBootstrap bootstrap = new ServerBootstrap();
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
@@ -77,7 +93,7 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
                 })
                 .option(ChannelOption.SO_BACKLOG, 128)
                 .childOption(ChannelOption.SO_KEEPALIVE, true);
-        
+
         serverChannel = bootstrap.bind(getPort()).sync().channel();
         LOGGER.info("Netty HTTP server initialized and listening on port {}", getPort());
     }
@@ -88,22 +104,22 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
     @Override
     protected void shutdownServer() throws Exception {
         LOGGER.info("Shutting down Netty HTTP server");
-        
+
         if (serverChannel != null) {
             serverChannel.close().sync();
             serverChannel = null;
         }
-        
+
         if (bossGroup != null) {
             bossGroup.shutdownGracefully();
             bossGroup = null;
         }
-        
+
         if (workerGroup != null) {
             workerGroup.shutdownGracefully();
             workerGroup = null;
         }
-        
+
         LOGGER.info("Netty HTTP server shut down successfully");
     }
 
@@ -115,10 +131,10 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
         protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
             // If this is not a keep-alive connection, close it after sending the response
             boolean keepAlive = HttpUtil.isKeepAlive(request);
-            
+
             // Get the client's IP address
             String remoteAddress = ((InetSocketAddress) ctx.channel().remoteAddress()).getHostString();
-            
+
             // Process the request asynchronously to avoid blocking the Netty event loop
             CompletableFuture.supplyAsync(() -> {
                 // Handle the message using the ProtocolFoyer's handleMessage method
@@ -126,7 +142,7 @@ public class NettyHttpFoyer<I extends RawInput, O extends RawOutput>
             }, EXECUTOR).thenAccept(response -> {
                 // Send the response back to the client
                 ctx.writeAndFlush(response);
-                
+
                 // If this is not a keep-alive connection, close it after sending the response
                 if (!keepAlive) {
                     ctx.close();
