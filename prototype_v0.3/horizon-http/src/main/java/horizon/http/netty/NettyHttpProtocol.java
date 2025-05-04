@@ -1,16 +1,15 @@
 package horizon.http.netty;
 
-import horizon.core.rendezvous.protocol.Protocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Implementation of the Protocol interface for Netty HTTP.
- * This class represents the HTTP protocol implemented using Netty.
+ * Implementation of the NettyProtocol for HTTP.
+ * This class extends the generic NettyProtocol to provide HTTP-specific functionality.
  */
-public class NettyHttpProtocol implements Protocol {
+public class NettyHttpProtocol extends NettyProtocol {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyHttpProtocol.class);
     private static final String PROTOCOL_NAME = "http";
-    private static final int DEFAULT_PORT = 8080;
-    
-    private boolean initialized = false;
 
     /**
      * {@inheritDoc}
@@ -24,16 +23,9 @@ public class NettyHttpProtocol implements Protocol {
      * {@inheritDoc}
      */
     @Override
-    public int getDefaultPort() {
-        return DEFAULT_PORT;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void initialize() {
-        initialized = true;
+        LOGGER.debug("Initializing Netty HTTP protocol");
+        super.initialize();
     }
 
     /**
@@ -41,14 +33,7 @@ public class NettyHttpProtocol implements Protocol {
      */
     @Override
     public void shutdown() {
-        initialized = false;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isInitialized() {
-        return initialized;
+        LOGGER.debug("Shutting down Netty HTTP protocol");
+        super.shutdown();
     }
 }
