@@ -1,8 +1,5 @@
 package horizon.core.rendezvous.protocol;
 
-import horizon.core.model.RawInput;
-import horizon.core.model.RawOutput;
-
 /**
  * Represents a communication protocol in the Horizon framework.
  * This interface defines the basic properties and lifecycle methods for a protocol.
