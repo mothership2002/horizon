@@ -30,7 +30,7 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
     private final int port;
     private final Rendezvous<I, ?> rendezvous;
     private final NettyInputConverter<I> inputConverter;
-    
+
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
     private Channel serverChannel;
@@ -73,12 +73,12 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
             return;
         }
 
-        LOGGER.info("Initializing NettyFoyer on port " + port);
-        
+        LOGGER.info("Initializing NettyFoyer on port {}", port);
+
         try {
             bossGroup = new NioEventLoopGroup(1);
             workerGroup = new NioEventLoopGroup();
-            
+
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -94,13 +94,13 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
                     })
                     .option(ChannelOption.SO_BACKLOG, 128)
                     .childOption(ChannelOption.SO_KEEPALIVE, true);
-            
+
             serverChannel = bootstrap.bind(port).sync().channel();
             initialized = true;
-            
-            LOGGER.info("NettyFoyer initialized and listening on port " + port);
+
+            LOGGER.info("NettyFoyer initialized and listening on port {}", port);
         } catch (Exception e) {
-            LOGGER.error("Failed to initialize NettyFoyer: " + e.getMessage(), e);
+            LOGGER.error("Failed to initialize NettyFoyer: {}", e.getMessage(), e);
             shutdown();
             throw new RuntimeException("Failed to initialize NettyFoyer", e);
         }
@@ -117,27 +117,27 @@ public class NettyFoyer<I extends RawInput> implements Foyer<I> {
         }
 
         LOGGER.info("Shutting down NettyFoyer");
-        
+
         try {
             if (serverChannel != null) {
                 serverChannel.close().sync();
                 serverChannel = null;
             }
-            
+
             if (bossGroup != null) {
                 bossGroup.shutdownGracefully();
                 bossGroup = null;
             }
-            
+
             if (workerGroup != null) {
                 workerGroup.shutdownGracefully();
                 workerGroup = null;
             }
-            
+
             initialized = false;
             LOGGER.info("NettyFoyer shut down successfully");
         } catch (Exception e) {
-            LOGGER.error("Error shutting down NettyFoyer: " + e.getMessage(), e);
+            LOGGER.error("Error shutting down NettyFoyer: {}", e.getMessage(), e);
         }
     }
 

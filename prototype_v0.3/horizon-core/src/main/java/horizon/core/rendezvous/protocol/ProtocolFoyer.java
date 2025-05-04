@@ -117,11 +117,11 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
     @Override
     public void shutdown() {
         if (!initialized) {
-            LOGGER.warn(protocol.getName() + " foyer is not initialized");
+            LOGGER.warn("{} foyer is not initialized", protocol.getName());
             return;
         }
 
-        LOGGER.info("Shutting down " + protocol.getName() + " foyer");
+        LOGGER.info("Shutting down {} foyer", protocol.getName());
 
         try {
             // Shutdown the server
@@ -131,9 +131,9 @@ public abstract class ProtocolFoyer<I extends RawInput, O extends RawOutput, M, 
             protocol.shutdown();
 
             initialized = false;
-            LOGGER.info(protocol.getName() + " foyer shut down successfully");
+            LOGGER.info("{} foyer shut down successfully", protocol.getName());
         } catch (Exception e) {
-            LOGGER.error("Error shutting down " + protocol.getName() + " foyer: " + e.getMessage());
+            LOGGER.error("Error shutting down {} foyer: {}", protocol.getName(), e.getMessage());
         }
     }
 
