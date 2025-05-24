@@ -1,0 +1,45 @@
+### Horizon Framework HTTP Test Requests
+
+### Welcome endpoint
+GET http://localhost:8080/
+
+### Create a user
+POST http://localhost:8080/users/create
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+
+### Get a user
+GET http://localhost:8080/users/1001
+
+### List all users
+GET http://localhost:8080/users/list
+
+### Create another user
+POST http://localhost:8080/users/create
+Content-Type: application/json
+
+{
+  "name": "Alice Smith",
+  "email": "alice@example.com"
+}
+
+### Test validation - missing name
+POST http://localhost:8080/users/create
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+### Test validation - invalid email
+POST http://localhost:8080/users/create
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "invalid-email"
+}
