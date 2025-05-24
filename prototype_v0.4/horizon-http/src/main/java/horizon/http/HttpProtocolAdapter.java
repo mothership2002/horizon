@@ -18,10 +18,10 @@ public class HttpProtocolAdapter implements ProtocolAdapter<FullHttpRequest, Ful
     
     @Override
     public String extractIntent(FullHttpRequest request) {
-        // Extract intent from URL path
-        // e.g., /api/users/create -> user.create
+        // Extract intent from URL path and HTTP method
         String uri = request.uri();
         String path = uri.split("\\?")[0]; // Remove query params
+        String method = request.method().name();
         
         // Remove /api prefix if present
         if (path.startsWith("/api/")) {
@@ -32,23 +32,69 @@ public class HttpProtocolAdapter implements ProtocolAdapter<FullHttpRequest, Ful
         
         // Handle root path
         if (path.isEmpty()) {
-            return "welcome";
+            return "system.welcome";
         }
         
-        // Convert path to intent format
-        // users/create -> user.create
-        // orders/123/cancel -> order.cancel
-        String intent = path.replace("/", ".")
-                           .replaceAll("\\d+", "") // Remove IDs
-                           .replaceAll("\\.\\.", ".") // Clean up double dots
-                           .replaceAll("s\\.", "."); // Remove plural
+        // Smart intent extraction based on REST conventions
+        String[] parts = path.split("/");
         
-        // Clean up trailing dots
-        if (intent.endsWith(".")) {
-            intent = intent.substring(0, intent.length() - 1);
+        if (parts.length == 1) {
+            // Single segment: /users
+            String resource = parts[0];
+            if (resource.endsWith("s")) {
+                resource = resource.substring(0, resource.length() - 1); // Remove plural
+            }
+
+            return switch (method) {
+                case "GET" -> resource + ".list";
+                case "POST" -> resource + ".create";
+                default -> resource + "." + method.toLowerCase();
+            };
+        } else if (parts.length == 2) {
+            // Two segments: /users/123 or /users/create
+            String resource = parts[0];
+            String second = parts[1];
+            
+            if (resource.endsWith("s")) {
+                resource = resource.substring(0, resource.length() - 1); // Remove plural
+            }
+            
+            // Check if second part is a number (ID)
+            if (second.matches("\\d+")) {
+                return switch (method) {
+                    case "GET" -> resource + ".get";
+                    case "PUT", "PATCH" -> resource + ".update";
+                    case "DELETE" -> resource + ".delete";
+                    default -> resource + "." + method.toLowerCase();
+                };
+            } else {
+                // It's an action: /users/create, /system/health
+                return resource + "." + second;
+            }
+        } else {
+            // Three or more segments: /users/123/orders
+            // For now, just use first and last non-numeric parts
+            StringBuilder intent = new StringBuilder();
+            
+            for (String part : parts) {
+                if (!part.matches("\\d+")) {
+                    if (!intent.isEmpty()) {
+                        intent.append(".");
+                    }
+                    if (part.endsWith("s")) {
+                        part = part.substring(0, part.length() - 1); // Remove plural
+                    }
+                    intent.append(part);
+                }
+            }
+            
+            // If we only have one part, add the method
+            if (!intent.toString().contains(".")) {
+                intent.append(".").append(method.toLowerCase());
+            }
+            
+            return intent.toString();
         }
-        
-        return intent;
     }
     
     @Override

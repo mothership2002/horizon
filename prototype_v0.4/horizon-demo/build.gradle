@@ -6,3 +6,9 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
+
+// Configure the main class for running the demo
+tasks.register('run', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'horizon.demo.DemoApplication'
+}
