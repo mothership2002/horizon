@@ -1,0 +1,6 @@
+rootProject.name = 'horizon-framework'
+
+include 'horizon-core'
+include 'horizon-http'
+include 'horizon-websocket'
+include 'horizon-demo'

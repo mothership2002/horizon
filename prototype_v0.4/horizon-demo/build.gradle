@@ -1,0 +1,7 @@
+dependencies {
+    implementation project(':horizon-core')
+    implementation project(':horizon-http')
+
+    // Netty for HTTP server (needed for FullHttpRequest)
+    implementation 'io.netty:netty-all:4.1.100.Final'
+}
