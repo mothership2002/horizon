@@ -48,17 +48,17 @@ public class CreateUserConductor extends AbstractConductor<UserData, User> {
 public class Application {
     public static void main(String[] args) {
         ProtocolAggregator aggregator = new ProtocolAggregator();
-        
+
         // Register multiple protocols
         aggregator.registerProtocol(new HttpProtocol(), new HttpFoyer(8080));
         aggregator.registerProtocol(new WebSocketProtocol(), new WebSocketFoyer(8081));
         // Future: aggregator.registerProtocol(new GrpcProtocol(), new GrpcFoyer(9090));
-        
+
         // Business logic written ONCE
         aggregator.registerConductor(new UserConductor());
         aggregator.registerConductor(new OrderConductor());
         aggregator.registerConductor(new PaymentConductor());
-        
+
         aggregator.start();
     }
 }
@@ -124,9 +124,6 @@ git clone https://github.com/yourusername/horizon-framework.git
 
 # Build the project
 ./gradlew build
-
-# Run the demo
-./gradlew :horizon-demo:run
 ```
 
 ## Architecture
