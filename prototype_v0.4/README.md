@@ -26,20 +26,26 @@ The entry point for each protocol. Each protocol has its own Foyer that adapts p
 ## Quick Example
 
 ```java
-// Your business logic - written once
-@Conductor("user.create")
-public class CreateUserConductor extends AbstractConductor<UserData, User> {
-    @Override
-    public User conduct(UserData data) {
-        return userService.createUser(data);
+// Your business logic - written once, with security controls
+@Conductor(namespace = "user")
+@ProtocolAccess({"HTTP", "WebSocket"})  // Explicit protocol access
+public class UserConductor {
+    
+    @Intent("create")
+    @ProtocolMapping(protocol = "HTTP", mapping = {"POST /users"})
+    @ProtocolMapping(protocol = "WebSocket", mapping = {"user.create"})
+    public User createUser(CreateUserRequest request) {
+        return userService.createUser(request);
+    }
+    
+    @Intent("bulkImport")
+    @ProtocolMapping(protocol = "HTTP", mapping = {"POST /users/import"})
+    @ProtocolAccess({"HTTP"})  // Only accessible via HTTP
+    public ImportResult importUsers(ImportRequest request) {
+        // Batch operations restricted to HTTP only
+        return userService.bulkImport(request);
     }
 }
-
-// Works with ALL protocols automatically!
-// HTTP POST /api/users/create
-// WebSocket: {"intent": "user.create", "data": {...}}
-// gRPC: CreateUserRequest
-// GraphQL: mutation { createUser(data: {...}) }
 ```
 
 ## The Power of Protocol Aggregation
@@ -91,12 +97,19 @@ public class UserGrpcService {
 }
 ```
 
-### With Horizon (Unified)
+### With Horizon (Unified & Secure)
 ```java
-@Conductor("user.create")
-public class UserConductor extends AbstractConductor<UserData, User> {
-    public User conduct(UserData data) {
-        // Logic written ONCE, works everywhere!
+@Conductor(namespace = "user")
+@ProtocolAccess({"HTTP", "WebSocket", "gRPC"})
+public class UserConductor {
+    
+    @Intent("create")
+    @ProtocolMapping(protocol = "HTTP", mapping = {"POST /users"})
+    @ProtocolMapping(protocol = "WebSocket", mapping = {"user.create"})
+    @ProtocolMapping(protocol = "gRPC", mapping = {"UserService.CreateUser"})
+    public User createUser(CreateUserRequest request) {
+        // Logic written ONCE, works everywhere with security!
+        return userService.createUser(request);
     }
 }
 ```
@@ -106,6 +119,7 @@ public class UserConductor extends AbstractConductor<UserData, User> {
 Version 0.4 is a complete rewrite focusing on:
 - **Simplicity**: Easier to understand and use
 - **Protocol Aggregation**: True multi-protocol support
+- **Security**: Fine-grained protocol access control
 - **Performance**: Minimal overhead
 - **Extensibility**: Easy to add new protocols
 
@@ -124,6 +138,38 @@ git clone https://github.com/yourusername/horizon-framework.git
 
 # Build the project
 ./gradlew build
+```
+
+## Key Features
+
+### 🔒 Protocol Access Control
+Control which protocols can access your business logic:
+
+```java
+@Conductor(namespace = "admin")
+@ProtocolAccess({"HTTP"})  // Admin operations only via HTTP
+public class AdminConductor {
+    // ...
+}
+
+@Conductor(namespace = "chat")
+@ProtocolAccess({"WebSocket"})  // Real-time features only via WebSocket
+public class ChatConductor {
+    // ...
+}
+```
+
+### 🎯 Protocol-Neutral Routing
+Define routes in a protocol-agnostic way:
+
+```java
+@Intent("create")
+@ProtocolMapping(protocol = "HTTP", mapping = {"POST /users"})
+@ProtocolMapping(protocol = "WebSocket", mapping = {"user.create"})
+@ProtocolMapping(protocol = "gRPC", mapping = {"UserService.CreateUser"})
+public User createUser(CreateUserRequest request) {
+    // Same logic, multiple protocols
+}
 ```
 
 ## Architecture
