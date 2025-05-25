@@ -43,7 +43,6 @@ class ConductorScannerTest {
             return response;
         }
         
-        @Intent("calculate")
         @Intent(value = "calc", aliases = {"compute"})
         public Map<String, Object> calculate(Map<String, Object> payload) {
             Integer a = (Integer) payload.get("a");

@@ -17,6 +17,6 @@ public class HttpProtocol implements Protocol<FullHttpRequest, FullHttpResponse>
     
     @Override
     public ProtocolAdapter<FullHttpRequest, FullHttpResponse> createAdapter() {
-        return new HttpProtocolAdapter();
+        return new ConfigurableHttpProtocolAdapter();
     }
 }

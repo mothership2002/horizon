@@ -24,7 +24,7 @@ public class ConfigurableHttpProtocolAdapter extends HttpProtocolAdapter {
      * Adds a custom intent resolver with higher priority than the default.
      */
     public void addResolver(IntentResolver<FullHttpRequest> resolver) {
-        resolvers.add(0, resolver); // Add at beginning for priority
+        resolvers.addFirst(resolver); // Add at beginning for priority
     }
     
     @Override
