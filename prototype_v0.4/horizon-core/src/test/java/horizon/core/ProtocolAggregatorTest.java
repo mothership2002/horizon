@@ -1,130 +1,154 @@
 package horizon.core;
 
+import horizon.core.annotation.ProtocolAccess;
 import horizon.core.protocol.Protocol;
 import horizon.core.protocol.ProtocolAdapter;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class ProtocolAggregatorTest {
-    
+
     private ProtocolAggregator aggregator;
-    
+    private AutoCloseable mocks;
+
+    @Mock
+    private Protocol<Object, Object> mockProtocol;
+
+    @Mock
+    private Foyer<Object> mockFoyer;
+
+    @Mock
+    private ProtocolAdapter<Object, Object> mockAdapter;
+
+    @Mock
+    private Rendezvous<Object, Object> mockRendezvous;
+
     @BeforeEach
     void setUp() {
+        mocks = MockitoAnnotations.openMocks(this);
         aggregator = new ProtocolAggregator();
+
+        // Setup mock protocol
+        when(mockProtocol.getName()).thenReturn("TEST");
+        when(mockProtocol.createAdapter()).thenReturn(mockAdapter);
     }
-    
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mocks.close();
+    }
+
     @Test
-    void shouldProcessRequestThroughConductor() {
+    void testConductorRegistration() {
         // Given
-        TestProtocol protocol = new TestProtocol();
-        TestFoyer foyer = new TestFoyer();
-        aggregator.registerProtocol(protocol, foyer);
-        
-        // Register a conductor
-        aggregator.registerConductor(new AbstractConductor<Map<String, Object>, String>("test.intent") {
-            @Override
-            public String conduct(Map<String, Object> payload) {
-                return "Hello, " + payload.get("name");
-            }
-        });
-        
+        TestConductor conductor = new TestConductor("test.intent");
+
         // When
-        aggregator.start();
-        
-        // Simulate request processing
-        Map<String, Object> request = new HashMap<>();
-        request.put("intent", "test.intent");
-        request.put("name", "World");
-        
-        HorizonContext context = foyer.simulateRequest(request);
-        
+        aggregator.registerConductor(conductor);
+
         // Then
-        assertThat(context.getResult()).isEqualTo("Hello, World");
-        assertThat(context.hasError()).isFalse();
-        
+        // We need to verify that the conductor was registered
+        // We can do this by registering a protocol and starting the aggregator
+        aggregator.registerProtocol(mockProtocol, mockFoyer);
+
+        // Verify that the protocol and foyer were registered
+        verify(mockFoyer).connectToRendezvous(any(Rendezvous.class));
+
+        // Start and stop the aggregator to verify it works
+        aggregator.start();
+        verify(mockFoyer).open();
+
         aggregator.stop();
+        verify(mockFoyer).close();
     }
-    
-    // Test implementations
-    private static class TestProtocol implements Protocol<Map<String, Object>, Map<String, Object>> {
-        @Override
-        public String getName() {
-            return "TEST";
-        }
-        
-        @Override
-        public ProtocolAdapter<Map<String, Object>, Map<String, Object>> createAdapter() {
-            return new TestAdapter();
-        }
-    }
-    
-    private static class TestAdapter implements ProtocolAdapter<Map<String, Object>, Map<String, Object>> {
-        @Override
-        public String extractIntent(Map<String, Object> request) {
-            return (String) request.get("intent");
-        }
-        
-        @Override
-        public Object extractPayload(Map<String, Object> request) {
-            Map<String, Object> payload = new HashMap<>(request);
-            payload.remove("intent");
-            return payload;
-        }
-        
-        @Override
-        public Map<String, Object> buildResponse(Object result, Map<String, Object> request) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("result", result);
-            return response;
-        }
-        
-        @Override
-        public Map<String, Object> buildErrorResponse(Throwable error, Map<String, Object> request) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("error", error.getMessage());
-            return response;
-        }
-    }
-    
-    private static class TestFoyer implements Foyer<Map<String, Object>> {
-        private Rendezvous<Map<String, Object>, Map<String, Object>> rendezvous;
-        private boolean open = false;
-        
-        @Override
-        public void open() {
-            open = true;
-        }
-        
-        @Override
-        public void close() {
-            open = false;
-        }
-        
-        @Override
-        public boolean isOpen() {
-            return open;
-        }
-        
-        @Override
-        @SuppressWarnings("unchecked")
-        public void connectToRendezvous(Rendezvous<Map<String, Object>, ?> rendezvous) {
-            this.rendezvous = (Rendezvous<Map<String, Object>, Map<String, Object>>) rendezvous;
-        }
-        
-        // Helper method for testing
-        public HorizonContext simulateRequest(Map<String, Object> request) {
-            if (rendezvous != null) {
-                HorizonContext context = rendezvous.encounter(request);
-                rendezvous.fallAway(context);
-                return context;
-            }
+
+    @Test
+    void testProtocolAccessControl() {
+        // Given
+        // Create a test conductor with protocol access restrictions
+        TestConductorWithAccess conductor = new TestConductorWithAccess("restricted.intent");
+        aggregator.registerConductor(conductor);
+
+        // Create a mock protocol adapter that will extract our test intent
+        when(mockAdapter.extractIntent(any())).thenReturn("restricted.intent");
+        Map<String, Object> testPayload = new HashMap<>();
+        when(mockAdapter.extractPayload(any())).thenReturn(testPayload);
+
+        // Create a mock foyer that will capture the rendezvous
+        doAnswer(invocation -> {
+            mockRendezvous = invocation.getArgument(0);
             return null;
+        }).when(mockFoyer).connectToRendezvous(any(Rendezvous.class));
+
+        // Register the protocol
+        when(mockProtocol.getName()).thenReturn("ALLOWED");
+        aggregator.registerProtocol(mockProtocol, mockFoyer);
+
+        // When - Test with allowed protocol
+        HorizonContext context = mockRendezvous.encounter(new Object());
+
+        // Then
+        assertNotNull(context);
+        assertFalse(context.hasError(), "Should not have error with allowed protocol");
+        assertEquals("Restricted access: {}", context.getResult());
+
+        // When - Test with denied protocol
+        when(mockProtocol.getName()).thenReturn("DENIED");
+        context = mockRendezvous.encounter(new Object());
+
+        // Then
+        assertNotNull(context);
+        assertTrue(context.hasError(), "Should have error with denied protocol");
+        assertTrue(context.getError() instanceof SecurityException, 
+            "Error should be SecurityException but was: " + 
+            (context.hasError() ? context.getError().getClass().getName() : "no error"));
+    }
+
+    // Test conductor for registration test
+    private static class TestConductor implements Conductor<Map<String, Object>, String> {
+        private final String pattern;
+
+        TestConductor(String pattern) {
+            this.pattern = pattern;
+        }
+
+        @Override
+        public String conduct(Map<String, Object> payload) {
+            return "Conducted: " + payload;
+        }
+
+        @Override
+        public String getIntentPattern() {
+            return pattern;
+        }
+    }
+
+    // Test conductor with protocol access restrictions
+    private static class TestConductorWithAccess implements Conductor<Map<String, Object>, String> {
+        private final String pattern;
+
+        TestConductorWithAccess(String pattern) {
+            this.pattern = pattern;
+        }
+
+        @ProtocolAccess(value = {"ALLOWED"})
+        @Override
+        public String conduct(Map<String, Object> payload) {
+            return "Restricted access: " + payload;
+        }
+
+        @Override
+        public String getIntentPattern() {
+            return pattern;
         }
     }
 }

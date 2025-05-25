@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
+
 import java.lang.reflect.Constructor;
 import java.net.SocketAddress;
 import java.util.HashMap;
@@ -122,11 +124,17 @@ class WebSocketFoyerTest {
     }
 
     @Test
-    void shouldConnectToRendezvous() {
+    void shouldConnectToRendezvous() throws Exception {
         // When
         foyer.connectToRendezvous(rendezvous);
 
-        // Then - no direct way to verify, but we'll test the handler below
+        // Then - verify that the rendezvous was set correctly using reflection
+        Field rendezvousField = WebSocketFoyer.class.getDeclaredField("rendezvous");
+        rendezvousField.setAccessible(true);
+        Rendezvous<WebSocketMessage, WebSocketMessage> actualRendezvous = 
+            (Rendezvous<WebSocketMessage, WebSocketMessage>) rendezvousField.get(foyer);
+
+        assertThat(actualRendezvous).isSameAs(rendezvous);
     }
 
     @Test

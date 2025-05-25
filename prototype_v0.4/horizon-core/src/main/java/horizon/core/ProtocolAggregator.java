@@ -3,6 +3,7 @@ package horizon.core;
 import horizon.core.protocol.Protocol;
 import horizon.core.protocol.ProtocolAdapter;
 import horizon.core.scanner.ConductorScanner;
+import horizon.core.security.ProtocolAccessValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,21 +107,35 @@ public class ProtocolAggregator {
      */
     private static class CentralRendezvous {
         private final ConductorRegistry conductorRegistry;
+        private final ProtocolAccessValidator accessValidator;
 
         CentralRendezvous(ConductorRegistry conductorRegistry) {
             this.conductorRegistry = conductorRegistry;
+            this.accessValidator = new ProtocolAccessValidator();
         }
 
         @SuppressWarnings("unchecked")
         HorizonContext process(HorizonContext context) {
             String intent = context.getIntent();
-            logger.debug("Processing intent: {} [{}]", intent, context.getTraceId());
+            String protocol = (String) context.getAttribute("protocol");
+            logger.debug("Processing intent: {} from protocol: {} [{}]", intent, protocol, context.getTraceId());
 
             try {
                 // Find conductor for this intent
                 Conductor<Object, Object> conductor = conductorRegistry.find(intent);
                 if (conductor == null) {
                     throw new IllegalArgumentException("No conductor found for intent: " + intent);
+                }
+                
+                // Validate protocol access
+                if (conductor instanceof horizon.core.scanner.ConductorScanner.ConductorMethodAdapter) {
+                    horizon.core.scanner.ConductorScanner.ConductorMethodAdapter adapter = 
+                        (horizon.core.scanner.ConductorScanner.ConductorMethodAdapter) conductor;
+                    if (!accessValidator.hasAccess(protocol, adapter.method)) {
+                        throw new SecurityException(
+                            String.format("Protocol '%s' is not allowed to access intent '%s'", protocol, intent)
+                        );
+                    }
                 }
 
                 // Conduct the business logic

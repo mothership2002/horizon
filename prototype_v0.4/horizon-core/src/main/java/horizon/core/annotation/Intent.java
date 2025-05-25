@@ -5,6 +5,8 @@ import java.lang.annotation.*;
 /**
  * Marks a method as an intent handler within a Conductor.
  * The method will be invoked when the specified intent is received.
+ * 
+ * This annotation is protocol-neutral. Use @ProtocolMapping for protocol-specific configurations.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -20,17 +22,4 @@ public @interface Intent {
      * Alternative intent patterns that also map to this method.
      */
     String[] aliases() default {};
-    
-    /**
-     * HTTP method constraints. If specified, this intent will only match
-     * for the specified HTTP methods. Empty means all methods are allowed.
-     */
-    String[] httpMethods() default {};
-    
-    /**
-     * HTTP path pattern for more specific matching.
-     * Can include placeholders like {id}.
-     * Example: "/users/{id}/orders"
-     */
-    String httpPath() default "";
 }

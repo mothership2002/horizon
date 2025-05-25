@@ -2,6 +2,8 @@ package horizon.http;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import horizon.core.protocol.ProtocolAdapter;
+import horizon.http.resolver.AnnotationBasedHttpIntentResolver;
+import horizon.http.resolver.HttpIntentResolver;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.*;
@@ -12,17 +14,24 @@ import java.util.Map;
 
 /**
  * Adapts HTTP requests and responses to Horizon format.
+ * Now supports both annotation-based and convention-based routing.
  */
 public class HttpProtocolAdapter implements ProtocolAdapter<FullHttpRequest, FullHttpResponse> {
     private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final horizon.http.resolver.HttpIntentResolver intentResolver = new horizon.http.resolver.HttpIntentResolver();
+    
+    private final HttpIntentResolver fallbackResolver = new HttpIntentResolver();
+    private final AnnotationBasedHttpIntentResolver annotationResolver = new AnnotationBasedHttpIntentResolver();
     private final horizon.http.dto.DtoMapper dtoMapper = new horizon.http.dto.DtoMapper();
+    
+    /**
+     * Gets the annotation-based resolver for conductor registration.
+     */
+    public AnnotationBasedHttpIntentResolver getAnnotationResolver() {
+        return annotationResolver;
+    }
 
     /**
      * Registers a DTO mapper configuration.
-     * 
-     * @param configurator a function that configures the DtoMapper
      */
     public void registerDtoMapper(java.util.function.Consumer<horizon.http.dto.DtoMapper> configurator) {
         configurator.accept(dtoMapper);
@@ -30,7 +39,14 @@ public class HttpProtocolAdapter implements ProtocolAdapter<FullHttpRequest, Ful
 
     @Override
     public String extractIntent(FullHttpRequest request) {
-        return intentResolver.resolveIntent(request);
+        // Try annotation-based resolver first
+        String intent = annotationResolver.resolveIntent(request);
+        if (intent != null) {
+            return intent;
+        }
+        
+        // Fall back to convention-based resolver
+        return fallbackResolver.resolveIntent(request);
     }
 
     @Override
@@ -160,6 +176,8 @@ public class HttpProtocolAdapter implements ProtocolAdapter<FullHttpRequest, Ful
             HttpResponseStatus status = HttpResponseStatus.INTERNAL_SERVER_ERROR;
             if (error instanceof IllegalArgumentException) {
                 status = HttpResponseStatus.BAD_REQUEST;
+            } else if (error instanceof SecurityException) {
+                status = HttpResponseStatus.FORBIDDEN;
             }
 
             FullHttpResponse response = new DefaultFullHttpResponse(

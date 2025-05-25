@@ -1,8 +1,6 @@
 package horizon.demo.conductors;
 
-import horizon.core.annotation.Conductor;
-import horizon.core.annotation.HttpMapping;
-import horizon.core.annotation.Intent;
+import horizon.core.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +11,7 @@ import java.util.stream.Collectors;
 
 /**
  * User management conductor using annotation-based declaration.
- * This single class handles user-related intents for ALL protocols!
+ * Protocol access is automatically determined by the presence of protocol mappings.
  */
 @Conductor(namespace = "user")
 public class UserConductor {
@@ -24,7 +22,8 @@ public class UserConductor {
     private final AtomicLong idGenerator = new AtomicLong(1000);
 
     @Intent("create")
-    @HttpMapping(methods = "POST", path = "/users")
+    @HttpResource("POST /users")
+    @WebSocketResource("user.create")
     public horizon.demo.dto.User createUser(horizon.demo.dto.CreateUserRequest request) {
         logger.info("Creating user with data: {}", request);
 
@@ -59,7 +58,7 @@ public class UserConductor {
     }
 
     @Intent("bulkCreate")
-    @HttpMapping(methods = "POST", path = "/users/bulk-create")
+    @HttpResource("POST /users/bulk-create")  // Only HTTP has mapping = only HTTP can access
     public horizon.demo.dto.BulkCreateUserResponse bulkCreateUsers(horizon.demo.dto.BulkCreateUserRequest request) {
         logger.info("Bulk creating users");
 
@@ -84,7 +83,7 @@ public class UserConductor {
     }
 
     @Intent("import")
-    @HttpMapping(methods = "POST", path = "/users/import")
+    @HttpResource("POST /users/import")  // HTTP only
     public Map<String, Object> importUsers(Map<String, Object> payload) {
         logger.info("Importing users from external source");
 
@@ -102,7 +101,8 @@ public class UserConductor {
     }
 
     @Intent("search")
-    @HttpMapping(methods = "GET", path = "/users/search")
+    @HttpResource("GET /users/search")
+    @WebSocketResource("user.search")
     public horizon.demo.dto.SearchUserResponse searchUsers(horizon.demo.dto.SearchUserRequest request) {
         String query = request.getQ();
         String searchBy = request.getSearchBy() != null ? request.getSearchBy() : "name";
@@ -125,7 +125,7 @@ public class UserConductor {
     }
 
     @Intent("export")
-    @HttpMapping(methods = "GET", path = "/users/export")
+    @HttpResource("GET /users/export")  // HTTP only for file downloads
     public Map<String, Object> exportUsers(Map<String, Object> payload) {
         String format = (String) payload.getOrDefault("format", "json");
 
@@ -141,7 +141,8 @@ public class UserConductor {
     }
 
     @Intent("validate")
-    @HttpMapping(methods = "POST", path = "/users/validate")
+    @HttpResource("POST /users/validate")
+    @WebSocketResource("user.validate")
     public Map<String, Object> validateUser(Map<String, Object> payload) {
         logger.info("Validating user data: {}", payload);
 
@@ -165,7 +166,8 @@ public class UserConductor {
     }
 
     @Intent("get")
-    @HttpMapping(methods = "GET", path = "/users/{id}")
+    @HttpResource("GET /users/{id}")
+    @WebSocketResource("user.get")
     public horizon.demo.dto.User getUser(horizon.demo.dto.GetUserRequest request) {
         Long id = request.getId();
         logger.info("Getting user with id: {}", id);
@@ -183,7 +185,9 @@ public class UserConductor {
     }
 
     @Intent("update")
-    @HttpMapping(methods = {"PUT", "PATCH"}, path = "/users/{id}")
+    @HttpResource("PUT /users/{id}")
+    @HttpResource("PATCH /users/{id}")
+    @WebSocketResource("user.update")
     public horizon.demo.dto.User updateUser(horizon.demo.dto.UpdateUserRequest request) {
         Long id = request.getId();
         logger.info("Updating user with id: {}", id);
@@ -219,7 +223,8 @@ public class UserConductor {
     }
 
     @Intent("delete")
-    @HttpMapping(methods = "DELETE", path = "/users/{id}")
+    @HttpResource("DELETE /users/{id}")
+    @WebSocketResource("user.delete")
     public horizon.demo.dto.DeleteUserResponse deleteUser(horizon.demo.dto.DeleteUserRequest request) {
         Long id = request.getId();
         logger.info("Deleting user with id: {}", id);
@@ -238,7 +243,8 @@ public class UserConductor {
     }
 
     @Intent("list")
-    @HttpMapping(methods = "GET", path = "/users")
+    @HttpResource("GET /users")
+    @WebSocketResource("user.list")
     public horizon.demo.dto.UserListResponse listUsers(Object request) {
         logger.info("Listing all users");
 

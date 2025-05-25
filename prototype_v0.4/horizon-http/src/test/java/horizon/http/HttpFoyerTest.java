@@ -2,24 +2,25 @@ package horizon.http;
 
 import horizon.core.HorizonContext;
 import horizon.core.Rendezvous;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.*;
+import io.netty.util.CharsetUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class HttpFoyerTest {
 
@@ -59,11 +60,17 @@ class HttpFoyerTest {
     }
 
     @Test
-    void shouldConnectToRendezvous() {
+    void shouldConnectToRendezvous() throws Exception {
         // When
         foyer.connectToRendezvous(rendezvous);
 
-        // Then - no direct way to verify, but we'll test the handler below
+        // Then - verify that the rendezvous was set correctly using reflection
+        Field rendezvousField = HttpFoyer.class.getDeclaredField("rendezvous");
+        rendezvousField.setAccessible(true);
+        Rendezvous<FullHttpRequest, FullHttpResponse> actualRendezvous = 
+            (Rendezvous<FullHttpRequest, FullHttpResponse>) rendezvousField.get(foyer);
+
+        assertThat(actualRendezvous).isSameAs(rendezvous);
     }
 
     @Test
@@ -71,34 +78,120 @@ class HttpFoyerTest {
         // Given
         foyer.connectToRendezvous(rendezvous);
 
-        // Mock the rendezvous behavior
-        HorizonContext context = mock(HorizonContext.class);
-        FullHttpResponse mockResponse = mock(FullHttpResponse.class);
-
-        when(rendezvous.encounter(any(FullHttpRequest.class))).thenReturn(context);
-        when(rendezvous.fallAway(context)).thenReturn(mockResponse);
-
-        // Create a request
+        // Create a test request
         FullHttpRequest request = new DefaultFullHttpRequest(
             HttpVersion.HTTP_1_1, 
             HttpMethod.GET, 
             "/test"
         );
 
-        // Since we can't directly test the private inner class anymore,
-        // we'll test the integration by opening the foyer and making a request
-        // This is a more realistic test anyway
+        // Create a test response
+        ByteBuf content = Unpooled.copiedBuffer("{\"result\":\"success\"}", CharsetUtil.UTF_8);
+        FullHttpResponse response = new DefaultFullHttpResponse(
+            HttpVersion.HTTP_1_1,
+            HttpResponseStatus.OK,
+            content
+        );
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json");
+        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes());
 
-        // Open the foyer to initialize the handler
-        foyer.open();
+        // Mock the rendezvous behavior
+        HorizonContext context = mock(HorizonContext.class);
+        when(rendezvous.encounter(any(FullHttpRequest.class))).thenReturn(context);
+        when(rendezvous.fallAway(context)).thenReturn(response);
 
-        // Verify that the rendezvous was called correctly
-        // This is an indirect test of the handler functionality
+        // Create an embedded channel and add the HttpRequestHandler
+        Object handler = createHttpRequestHandler(foyer);
+        EmbeddedChannel channel = new EmbeddedChannel((io.netty.channel.ChannelHandler) handler);
 
-        // Then close the foyer
-        foyer.close();
+        // When - write the request to the channel
+        channel.writeInbound(request);
 
-        // Verify that the test passed by checking that we got this far
-        assertThat(true).isTrue();
+        // Then - verify that the rendezvous was called with the request
+        ArgumentCaptor<FullHttpRequest> requestCaptor = ArgumentCaptor.forClass(FullHttpRequest.class);
+        verify(rendezvous).encounter(requestCaptor.capture());
+
+        // Verify the captured request
+        FullHttpRequest capturedRequest = requestCaptor.getValue();
+        assertThat(capturedRequest.method()).isEqualTo(HttpMethod.GET);
+        assertThat(capturedRequest.uri()).isEqualTo("/test");
+
+        // Verify that the response was written to the channel
+        FullHttpResponse outboundResponse = channel.readOutbound();
+        assertThat(outboundResponse).isNotNull();
+        assertThat(outboundResponse.status()).isEqualTo(HttpResponseStatus.OK);
+        assertThat(outboundResponse.headers().get(HttpHeaderNames.CONTENT_TYPE)).isEqualTo("application/json");
+
+        String responseContent = outboundResponse.content().toString(CharsetUtil.UTF_8);
+        assertThat(responseContent).isEqualTo("{\"result\":\"success\"}");
+
+        // Cleanup
+        channel.finish();
+    }
+
+    @Test
+    void shouldHandleErrorWhenNoRendezvous() throws Exception {
+        // Given - foyer without a connected rendezvous
+
+        // Create a test request
+        FullHttpRequest request = new DefaultFullHttpRequest(
+            HttpVersion.HTTP_1_1, 
+            HttpMethod.GET, 
+            "/test"
+        );
+
+        // Create an embedded channel and add the HttpRequestHandler
+        Object handler = createHttpRequestHandler(foyer);
+        EmbeddedChannel channel = new EmbeddedChannel((io.netty.channel.ChannelHandler) handler);
+
+        // When - write the request to the channel
+        channel.writeInbound(request);
+
+        // Then - verify that an error response was sent
+        FullHttpResponse outboundResponse = channel.readOutbound();
+        assertThat(outboundResponse).isNotNull();
+        assertThat(outboundResponse.status()).isEqualTo(HttpResponseStatus.SERVICE_UNAVAILABLE);
+
+        // Cleanup
+        channel.finish();
+    }
+
+    @Test
+    void shouldHandleExceptionFromRendezvous() throws Exception {
+        // Given
+        foyer.connectToRendezvous(rendezvous);
+
+        // Create a test request
+        FullHttpRequest request = new DefaultFullHttpRequest(
+            HttpVersion.HTTP_1_1, 
+            HttpMethod.GET, 
+            "/test"
+        );
+
+        // Mock the rendezvous to throw an exception
+        when(rendezvous.encounter(any(FullHttpRequest.class))).thenThrow(new RuntimeException("Test exception"));
+
+        // Create an embedded channel and add the HttpRequestHandler
+        Object handler = createHttpRequestHandler(foyer);
+        EmbeddedChannel channel = new EmbeddedChannel((io.netty.channel.ChannelHandler) handler);
+
+        // When - write the request to the channel
+        channel.writeInbound(request);
+
+        // Then - verify that an error response was sent
+        FullHttpResponse outboundResponse = channel.readOutbound();
+        assertThat(outboundResponse).isNotNull();
+        assertThat(outboundResponse.status()).isEqualTo(HttpResponseStatus.INTERNAL_SERVER_ERROR);
+
+        // Cleanup
+        channel.finish();
+    }
+
+    // Helper method to create an instance of the HttpRequestHandler inner class
+    private Object createHttpRequestHandler(HttpFoyer foyer) throws Exception {
+        Class<?> handlerClass = Class.forName("horizon.http.HttpFoyer$HttpRequestHandler");
+        java.lang.reflect.Constructor<?> constructor = handlerClass.getDeclaredConstructors()[0];
+        constructor.setAccessible(true);
+        return constructor.newInstance(foyer);
     }
 }

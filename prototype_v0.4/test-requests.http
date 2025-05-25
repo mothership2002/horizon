@@ -3,8 +3,18 @@
 ### Welcome endpoint
 GET http://localhost:8080/
 
+### System health check
+GET http://localhost:8080/system/health
+
+### System info
+GET http://localhost:8080/system/info
+
+###
+### User Management Endpoints
+###
+
 ### Create a user
-POST http://localhost:8080/users/create
+POST http://localhost:8080/users
 Content-Type: application/json
 
 {
@@ -15,20 +25,83 @@ Content-Type: application/json
 ### Get a user
 GET http://localhost:8080/users/1001
 
-### List all users
-GET http://localhost:8080/users/list
-
-### Create another user
-POST http://localhost:8080/users/create
+### Update a user
+PUT http://localhost:8080/users/1001
 Content-Type: application/json
 
 {
-  "name": "Alice Smith",
-  "email": "alice@example.com"
+  "name": "John Updated",
+  "email": "john.updated@example.com"
 }
 
+### Delete a user
+DELETE http://localhost:8080/users/1001
+
+### List all users
+GET http://localhost:8080/users
+
+### Search users
+GET http://localhost:8080/users/search?q=john&searchBy=name
+
+### Validate user data
+POST http://localhost:8080/users/validate
+Content-Type: application/json
+
+{
+  "name": "Test User",
+  "email": "test@example.com"
+}
+
+###
+### HTTP-Only Endpoints (Protocol Restricted)
+###
+
+### Bulk create users (HTTP ONLY)
+POST http://localhost:8080/users/bulk-create
+Content-Type: application/json
+
+{
+  "users": [
+    {"name": "User 1", "email": "user1@example.com"},
+    {"name": "User 2", "email": "user2@example.com"},
+    {"name": "User 3", "email": "user3@example.com"}
+  ]
+}
+
+### Import users (HTTP ONLY)
+POST http://localhost:8080/users/import
+Content-Type: application/json
+
+{
+  "source": "csv",
+  "format": "standard",
+  "url": "https://example.com/users.csv"
+}
+
+### Export users (HTTP ONLY)
+GET http://localhost:8080/users/export?format=json
+
+###
+### Admin Endpoints (HTTP ONLY with strict security)
+###
+
+### Get system metrics (Admin only)
+GET http://localhost:8080/admin/metrics
+
+### Shutdown system (Admin only - be careful!)
+POST http://localhost:8080/admin/shutdown
+Content-Type: application/json
+
+{
+  "confirmation": "yes"
+}
+
+###
+### Error Test Cases
+###
+
 ### Test validation - missing name
-POST http://localhost:8080/users/create
+POST http://localhost:8080/users
 Content-Type: application/json
 
 {
@@ -36,10 +109,16 @@ Content-Type: application/json
 }
 
 ### Test validation - invalid email
-POST http://localhost:8080/users/create
+POST http://localhost:8080/users
 Content-Type: application/json
 
 {
   "name": "Test User",
   "email": "invalid-email"
 }
+
+### Test not found
+GET http://localhost:8080/users/99999
+
+### Test method not allowed
+DELETE http://localhost:8080/users

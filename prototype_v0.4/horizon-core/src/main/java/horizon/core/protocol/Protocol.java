@@ -1,26 +1,19 @@
 package horizon.core.protocol;
 
 /**
- * Represents a communication protocol that can be aggregated by Horizon.
- * Each protocol knows how to adapt its specific format to the common Horizon format.
- *
- * @param <I> the protocol-specific input type
- * @param <O> the protocol-specific output type
+ * Defines a protocol that can be used in the Horizon Framework.
+ * This is a marker interface that all protocol definitions must implement.
  */
-public interface Protocol<I, O> {
-    
+public interface Protocol {
     /**
-     * Returns the name of this protocol (e.g., "HTTP", "WebSocket", "gRPC").
-     *
-     * @return the protocol name
+     * Gets the unique name of this protocol.
      */
     String getName();
     
     /**
-     * Creates an adapter for this protocol.
-     * The adapter handles the conversion between protocol-specific and Horizon formats.
-     *
-     * @return a protocol adapter
+     * Gets the display name of this protocol.
      */
-    ProtocolAdapter<I, O> createAdapter();
+    default String getDisplayName() {
+        return getName();
+    }
 }
