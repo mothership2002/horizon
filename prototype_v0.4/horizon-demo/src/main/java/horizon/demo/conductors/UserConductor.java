@@ -1,6 +1,7 @@
 package horizon.demo.conductors;
 
 import horizon.core.annotation.*;
+import horizon.core.protocol.ProtocolNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,8 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
- * User management conductor using annotation-based declaration.
- * Protocol access is automatically determined by the presence of protocol mappings.
+ * User management conductor using the new @ProtocolAccess annotation.
  */
 @Conductor(namespace = "user")
 public class UserConductor {
@@ -22,8 +22,12 @@ public class UserConductor {
     private final AtomicLong idGenerator = new AtomicLong(1000);
 
     @Intent("create")
-    @HttpResource("POST /users")
-    @WebSocketResource("user.create")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users"),
+            @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.create")
+        }
+    )
     public horizon.demo.dto.User createUser(horizon.demo.dto.CreateUserRequest request) {
         logger.info("Creating user with data: {}", request);
 
@@ -49,16 +53,10 @@ public class UserConductor {
         return user;
     }
 
-    // For backward compatibility with Map-based calls
-    private horizon.demo.dto.User createUserFromMap(Map<String, Object> payload) {
-        horizon.demo.dto.CreateUserRequest request = new horizon.demo.dto.CreateUserRequest();
-        request.setName((String) payload.get("name"));
-        request.setEmail((String) payload.get("email"));
-        return createUser(request);
-    }
-
     @Intent("bulkCreate")
-    @HttpResource("POST /users/bulk-create")  // Only HTTP has mapping = only HTTP can access
+    @ProtocolAccess(
+        schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users/bulk-create")
+    )
     public horizon.demo.dto.BulkCreateUserResponse bulkCreateUsers(horizon.demo.dto.BulkCreateUserRequest request) {
         logger.info("Bulk creating users");
 
@@ -83,7 +81,9 @@ public class UserConductor {
     }
 
     @Intent("import")
-    @HttpResource("POST /users/import")  // HTTP only
+    @ProtocolAccess(
+        schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users/import")
+    )
     public Map<String, Object> importUsers(Map<String, Object> payload) {
         logger.info("Importing users from external source");
 
@@ -101,8 +101,12 @@ public class UserConductor {
     }
 
     @Intent("search")
-    @HttpResource("GET /users/search")
-    @WebSocketResource("user.search")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "GET /users/search"),
+            @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.search")
+        }
+    )
     public horizon.demo.dto.SearchUserResponse searchUsers(horizon.demo.dto.SearchUserRequest request) {
         String query = request.getQ();
         String searchBy = request.getSearchBy() != null ? request.getSearchBy() : "name";
@@ -125,7 +129,9 @@ public class UserConductor {
     }
 
     @Intent("export")
-    @HttpResource("GET /users/export")  // HTTP only for file downloads
+    @ProtocolAccess(
+        schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "GET /users/export")
+    )
     public Map<String, Object> exportUsers(Map<String, Object> payload) {
         String format = (String) payload.getOrDefault("format", "json");
 
@@ -141,8 +147,12 @@ public class UserConductor {
     }
 
     @Intent("validate")
-    @HttpResource("POST /users/validate")
-    @WebSocketResource("user.validate")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users/validate"),
+            @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.validate")
+        }
+    )
     public Map<String, Object> validateUser(Map<String, Object> payload) {
         logger.info("Validating user data: {}", payload);
 
@@ -166,8 +176,12 @@ public class UserConductor {
     }
 
     @Intent("get")
-    @HttpResource("GET /users/{id}")
-    @WebSocketResource("user.get")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "GET /users/{id}"),
+            @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.get")
+        }
+    )
     public horizon.demo.dto.User getUser(horizon.demo.dto.GetUserRequest request) {
         Long id = request.getId();
         logger.info("Getting user with id: {}", id);
@@ -185,9 +199,13 @@ public class UserConductor {
     }
 
     @Intent("update")
-    @HttpResource("PUT /users/{id}")
-    @HttpResource("PATCH /users/{id}")
-    @WebSocketResource("user.update")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "PUT /users/{id}"),
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "PATCH /users/{id}"),
+            @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.update")
+        }
+    )
     public horizon.demo.dto.User updateUser(horizon.demo.dto.UpdateUserRequest request) {
         Long id = request.getId();
         logger.info("Updating user with id: {}", id);
@@ -223,8 +241,12 @@ public class UserConductor {
     }
 
     @Intent("delete")
-    @HttpResource("DELETE /users/{id}")
-    @WebSocketResource("user.delete")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "DELETE /users/{id}"),
+            @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.delete")
+        }
+    )
     public horizon.demo.dto.DeleteUserResponse deleteUser(horizon.demo.dto.DeleteUserRequest request) {
         Long id = request.getId();
         logger.info("Deleting user with id: {}", id);
@@ -243,8 +265,12 @@ public class UserConductor {
     }
 
     @Intent("list")
-    @HttpResource("GET /users")
-    @WebSocketResource("user.list")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "GET /users"),
+            @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.list")
+        }
+    )
     public horizon.demo.dto.UserListResponse listUsers(Object request) {
         logger.info("Listing all users");
 
@@ -253,19 +279,5 @@ public class UserConductor {
             .collect(Collectors.toList());
 
         return new horizon.demo.dto.UserListResponse(userList);
-    }
-
-    private Long extractId(Map<String, Object> payload) {
-        Object id = payload.get("id");
-        if (id instanceof Number) {
-            return ((Number) id).longValue();
-        } else if (id instanceof String) {
-            try {
-                return Long.parseLong((String) id);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        return null;
     }
 }

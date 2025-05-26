@@ -2,10 +2,10 @@ package horizon.demo;
 
 import horizon.core.AbstractConductor;
 import horizon.core.ProtocolAggregator;
-import horizon.http.HttpFoyer;
-import horizon.http.HttpProtocol;
-import horizon.websocket.WebSocketFoyer;
-import horizon.websocket.WebSocketProtocol;
+import horizon.web.http.HttpFoyer;
+import horizon.web.http.HttpProtocol;
+import horizon.web.websocket.WebSocketFoyer;
+import horizon.web.websocket.WebSocketProtocol;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

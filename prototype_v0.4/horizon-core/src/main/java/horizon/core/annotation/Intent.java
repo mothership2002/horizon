@@ -6,7 +6,7 @@ import java.lang.annotation.*;
  * Marks a method as an intent handler within a Conductor.
  * The method will be invoked when the specified intent is received.
  * 
- * This annotation is protocol-neutral. Use @ProtocolMapping for protocol-specific configurations.
+ * This annotation is protocol-neutral. Use @ProtocolAccess for protocol-specific configurations.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

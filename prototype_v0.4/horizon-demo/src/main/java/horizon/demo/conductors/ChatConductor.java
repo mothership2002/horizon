@@ -2,7 +2,9 @@ package horizon.demo.conductors;
 
 import horizon.core.annotation.Conductor;
 import horizon.core.annotation.Intent;
-import horizon.core.annotation.WebSocketResource;
+import horizon.core.annotation.ProtocolAccess;
+import horizon.core.annotation.ProtocolSchema;
+import horizon.core.protocol.ProtocolNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Chat conductor for real-time communication.
- * Only WebSocket mappings = only WebSocket access.
+ * WebSocket-only access using the new @ProtocolAccess annotation.
  */
 @Conductor(namespace = "chat")
 public class ChatConductor {
@@ -20,7 +22,13 @@ public class ChatConductor {
     private final Map<String, String> activeUsers = new ConcurrentHashMap<>();
     
     @Intent("join")
-    @WebSocketResource(value = "chat.join", streaming = true)
+    @ProtocolAccess(
+        schema = @ProtocolSchema(
+            protocol = ProtocolNames.WEBSOCKET, 
+            value = "chat.join",
+            attributes = {"streaming", "true"}
+        )
+    )
     public Map<String, Object> joinChat(Map<String, Object> payload) {
         String sessionId = (String) payload.get("_sessionId");
         String username = (String) payload.get("username");
@@ -36,7 +44,13 @@ public class ChatConductor {
     }
     
     @Intent("message")
-    @WebSocketResource(value = "chat.message", streaming = true)
+    @ProtocolAccess(
+        schema = @ProtocolSchema(
+            protocol = ProtocolNames.WEBSOCKET,
+            value = "chat.message",
+            attributes = {"streaming", "true"}
+        )
+    )
     public Map<String, Object> sendMessage(Map<String, Object> payload) {
         String sessionId = (String) payload.get("_sessionId");
         String message = (String) payload.get("message");
@@ -56,7 +70,9 @@ public class ChatConductor {
     }
     
     @Intent("leave")
-    @WebSocketResource("chat.leave")
+    @ProtocolAccess(
+        schema = @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "chat.leave")
+    )
     public Map<String, Object> leaveChat(Map<String, Object> payload) {
         String sessionId = (String) payload.get("_sessionId");
         String username = activeUsers.remove(sessionId);

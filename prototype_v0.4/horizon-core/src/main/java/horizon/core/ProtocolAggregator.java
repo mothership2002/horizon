@@ -1,5 +1,6 @@
 package horizon.core;
 
+import horizon.core.conductor.ConductorMethod;
 import horizon.core.protocol.Protocol;
 import horizon.core.protocol.ProtocolAdapter;
 import horizon.core.scanner.ConductorScanner;
@@ -7,6 +8,7 @@ import horizon.core.security.ProtocolAccessValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,11 +21,13 @@ public class ProtocolAggregator {
 
     private final Map<String, Protocol<?, ?>> protocols = new ConcurrentHashMap<>();
     private final Map<String, Foyer<?>> foyers = new ConcurrentHashMap<>();
+    private final Map<String, ProtocolAdapter<?, ?>> adapters = new ConcurrentHashMap<>();
     private final ConductorRegistry conductorRegistry = new ConductorRegistry();
+    private final Map<String, ConductorMethod> conductorMethods = new ConcurrentHashMap<>();
     private final CentralRendezvous centralRendezvous;
 
     public ProtocolAggregator() {
-        this.centralRendezvous = new CentralRendezvous(conductorRegistry);
+        this.centralRendezvous = new CentralRendezvous(conductorRegistry, conductorMethods);
     }
 
     /**
@@ -39,12 +43,25 @@ public class ProtocolAggregator {
 
         protocols.put(protocolName, protocol);
         foyers.put(protocolName, foyer);
+        
+        // Create and store the adapter
+        ProtocolAdapter<I, O> adapter = protocol.createAdapter();
+        adapters.put(protocolName, adapter);
 
         // Create a protocol-specific rendezvous that delegates to the central one
         ProtocolSpecificRendezvous<I, O> protocolRendezvous = 
-            new ProtocolSpecificRendezvous<>(protocol, centralRendezvous);
+            new ProtocolSpecificRendezvous<>(protocol, adapter, centralRendezvous);
 
         foyer.connectToRendezvous(protocolRendezvous);
+    }
+
+    /**
+     * Gets the protocol adapter for a specific protocol.
+     * This is used by the ConductorScanner to register protocol-specific mappings.
+     */
+    @SuppressWarnings("unchecked")
+    public <I, O> ProtocolAdapter<I, O> getProtocolAdapter(String protocolName) {
+        return (ProtocolAdapter<I, O>) adapters.get(protocolName);
     }
 
     /**
@@ -55,6 +72,15 @@ public class ProtocolAggregator {
     public void registerConductor(Conductor<?, ?> conductor) {
         logger.info("Registering conductor for pattern: {}", conductor.getIntentPattern());
         conductorRegistry.register(conductor);
+    }
+    
+    /**
+     * Registers a conductor method.
+     * This is used by the ConductorScanner to register method-level information.
+     */
+    public void registerConductorMethod(ConductorMethod method) {
+        conductorMethods.put(method.getIntent(), method);
+        registerConductor(new ConductorScanner.ConductorMethodAdapter(method));
     }
 
     /**
@@ -67,7 +93,12 @@ public class ProtocolAggregator {
     public void scanConductors(String basePackage) {
         logger.info("Scanning for conductors in package: {}", basePackage);
         ConductorScanner scanner = new ConductorScanner();
-        scanner.scan(basePackage, this);
+        List<ConductorMethod> methods = scanner.scan(basePackage, this);
+        
+        // Register all conductor methods
+        for (ConductorMethod method : methods) {
+            registerConductorMethod(method);
+        }
     }
 
     /**
@@ -103,14 +134,24 @@ public class ProtocolAggregator {
     }
 
     /**
+     * Gets the ConductorMethod for a specific intent.
+     * This is used by protocol adapters to determine parameter types.
+     */
+    public ConductorMethod getConductorMethod(String intent) {
+        return conductorMethods.get(intent);
+    }
+
+    /**
      * Inner class that handles the central meeting point for all protocols.
      */
     private static class CentralRendezvous {
         private final ConductorRegistry conductorRegistry;
+        private final Map<String, ConductorMethod> conductorMethods;
         private final ProtocolAccessValidator accessValidator;
 
-        CentralRendezvous(ConductorRegistry conductorRegistry) {
+        CentralRendezvous(ConductorRegistry conductorRegistry, Map<String, ConductorMethod> conductorMethods) {
             this.conductorRegistry = conductorRegistry;
+            this.conductorMethods = conductorMethods;
             this.accessValidator = new ProtocolAccessValidator();
         }
 
@@ -128,9 +169,9 @@ public class ProtocolAggregator {
                 }
                 
                 // Validate protocol access
-                if (conductor instanceof horizon.core.scanner.ConductorScanner.ConductorMethodAdapter) {
-                    horizon.core.scanner.ConductorScanner.ConductorMethodAdapter adapter = 
-                        (horizon.core.scanner.ConductorScanner.ConductorMethodAdapter) conductor;
+                if (conductor instanceof ConductorScanner.ConductorMethodAdapter) {
+                    ConductorScanner.ConductorMethodAdapter adapter = 
+                        (ConductorScanner.ConductorMethodAdapter) conductor;
                     if (!accessValidator.hasAccess(protocol, adapter.method)) {
                         throw new SecurityException(
                             String.format("Protocol '%s' is not allowed to access intent '%s'", protocol, intent)
@@ -156,13 +197,15 @@ public class ProtocolAggregator {
      * Adapts protocol-specific requests to the central rendezvous.
      */
     public static class ProtocolSpecificRendezvous<I, O> implements Rendezvous<I, O> {
+        private static final Logger logger = LoggerFactory.getLogger(ProtocolSpecificRendezvous.class);
+        
         private final Protocol<I, O> protocol;
         private final ProtocolAdapter<I, O> adapter;
         private final CentralRendezvous centralRendezvous;
 
-        ProtocolSpecificRendezvous(Protocol<I, O> protocol, CentralRendezvous centralRendezvous) {
+        ProtocolSpecificRendezvous(Protocol<I, O> protocol, ProtocolAdapter<I, O> adapter, CentralRendezvous centralRendezvous) {
             this.protocol = protocol;
-            this.adapter = protocol.createAdapter();
+            this.adapter = adapter;
             this.centralRendezvous = centralRendezvous;
         }
 

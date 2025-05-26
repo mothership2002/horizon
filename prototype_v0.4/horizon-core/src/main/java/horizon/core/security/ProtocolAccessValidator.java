@@ -12,14 +12,12 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Validates protocol access to conductors based on protocol access annotations.
+ * Validates protocol access to conductors based on @ProtocolAccess annotations.
  * 
  * Access is determined by:
  * 1. @ProtocolAccess with schema definitions (highest priority)
- * 2. @ProtocolAccess with allow list
- * 3. Legacy @HttpResource/@WebSocketResource annotations (deprecated)
- * 4. @ProtocolMapping annotations (deprecated)
- * 5. No restrictions (backward compatibility)
+ * 2. @ProtocolAccess with value list (simple access control)
+ * 3. No restrictions (backward compatibility)
  */
 public class ProtocolAccessValidator {
     private static final Logger logger = LoggerFactory.getLogger(ProtocolAccessValidator.class);
@@ -45,28 +43,7 @@ public class ProtocolAccessValidator {
             if (access != null) return access;
         }
         
-        // Check legacy convenience annotations (deprecated)
-        if (hasLegacyMapping(method, protocol)) {
-            logger.debug("Access granted to {} for {} via legacy annotation", protocol, method.getName());
-            return true;
-        }
-        
-        // Check @ProtocolMapping annotations (deprecated)
-        if (hasProtocolMapping(method, protocol)) {
-            logger.debug("Access granted to {} for {} via @ProtocolMapping", protocol, method.getName());
-            return true;
-        }
-        
-        // No access control defined - check if any mapping exists
-        boolean hasAnyMapping = hasAnyProtocolMapping(method);
-        if (hasAnyMapping) {
-            // Has mappings but not for this protocol - deny access
-            logger.debug("Access denied to {} for {} - has mappings but not for this protocol", 
-                        protocol, method.getName());
-            return false;
-        }
-        
-        // No mappings at all - allow for backward compatibility
+        // No access control defined - allow for backward compatibility
         logger.warn("No protocol access control found for {}.{} - allowing all protocols (backward compatibility)", 
                    declaringClass.getSimpleName(), method.getName());
         return true;
@@ -124,15 +101,6 @@ public class ProtocolAccessValidator {
             if (schema != null) return schema;
         }
         
-        // Check legacy annotations
-        if (ProtocolNames.HTTP.equals(protocol)) {
-            HttpResource httpResource = method.getAnnotation(HttpResource.class);
-            if (httpResource != null) return httpResource.value();
-        } else if (ProtocolNames.WEBSOCKET.equals(protocol)) {
-            WebSocketResource wsResource = method.getAnnotation(WebSocketResource.class);
-            if (wsResource != null) return wsResource.value();
-        }
-        
         return null;
     }
     
@@ -143,33 +111,5 @@ public class ProtocolAccessValidator {
             }
         }
         return null;
-    }
-    
-    private boolean hasLegacyMapping(Method method, String protocol) {
-        switch (protocol) {
-            case ProtocolNames.HTTP:
-                return method.getAnnotationsByType(HttpResource.class).length > 0;
-            case ProtocolNames.WEBSOCKET:
-                return method.getAnnotationsByType(WebSocketResource.class).length > 0;
-            default:
-                return false;
-        }
-    }
-    
-    private boolean hasProtocolMapping(Method method, String protocol) {
-        ProtocolMapping[] mappings = method.getAnnotationsByType(ProtocolMapping.class);
-        for (ProtocolMapping mapping : mappings) {
-            if (mapping.protocol().equals(protocol)) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    private boolean hasAnyProtocolMapping(Method method) {
-        return method.getAnnotationsByType(ProtocolAccess.class).length > 0 ||
-               method.getAnnotationsByType(ProtocolMapping.class).length > 0 ||
-               method.getAnnotationsByType(HttpResource.class).length > 0 ||
-               method.getAnnotationsByType(WebSocketResource.class).length > 0;
     }
 }

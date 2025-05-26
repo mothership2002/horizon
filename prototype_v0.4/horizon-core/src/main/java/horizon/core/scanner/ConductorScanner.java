@@ -7,6 +7,7 @@ import horizon.core.annotation.ProtocolAccess;
 import horizon.core.annotation.ProtocolSchema;
 import horizon.core.conductor.ConductorMethod;
 import horizon.core.protocol.ProtocolNames;
+import horizon.web.http.resolver.AnnotationBasedHttpIntentResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,17 +26,17 @@ public class ConductorScanner {
     
     /**
      * Scans the specified package for Conductor classes and registers them with the aggregator.
+     * 
+     * @return the list of ConductorMethod instances found
      */
-    public void scan(String basePackage, ProtocolAggregator aggregator) {
+    public List<ConductorMethod> scan(String basePackage, ProtocolAggregator aggregator) {
         logger.info("Scanning for conductors in package: {}", basePackage);
+        
+        List<ConductorMethod> allMethods = new ArrayList<>();
         
         try {
             List<Class<?>> classes = findClasses(basePackage);
             int conductorCount = 0;
-            int methodCount = 0;
-            
-            // Collect all conductor methods first
-            List<ConductorMethod> allMethods = new ArrayList<>();
             
             for (Class<?> clazz : classes) {
                 if (clazz.isAnnotationPresent(Conductor.class)) {
@@ -44,38 +45,44 @@ public class ConductorScanner {
                     
                     List<ConductorMethod> methods = processConductorClass(clazz);
                     allMethods.addAll(methods);
-                    methodCount += methods.size();
                 }
             }
             
-            // Register protocol mappings (if HTTP protocol is registered)
+            // Register protocol-specific mappings
             registerProtocolMappings(allMethods, aggregator);
             
-            // Register each method as a conductor
-            for (ConductorMethod method : allMethods) {
-                aggregator.registerConductor(new ConductorMethodAdapter(method));
-            }
-            
-            logger.info("Registered {} conductors with {} intent methods", conductorCount, methodCount);
+            logger.info("Found {} conductors with {} intent methods", conductorCount, allMethods.size());
             
         } catch (Exception e) {
             logger.error("Error scanning for conductors", e);
             throw new RuntimeException("Failed to scan for conductors", e);
         }
+        
+        return allMethods;
     }
     
     /**
      * Registers protocol mappings from conductor methods.
      */
     private void registerProtocolMappings(List<ConductorMethod> methods, ProtocolAggregator aggregator) {
-        // This is a bit of a hack to get the HTTP adapter
-        // In a real implementation, we'd have a better way to access protocol adapters
+        // Register HTTP mappings if HTTP adapter is available
         try {
-            // Use reflection to access the protocol adapters
-            // For now, we'll skip this as it would require changes to ProtocolAggregator API
-            logger.debug("Protocol mapping registration would happen here");
+            Object httpAdapter = aggregator.getProtocolAdapter(ProtocolNames.HTTP);
+            if (httpAdapter != null && httpAdapter instanceof horizon.web.http.ConfigurableHttpProtocolAdapter) {
+                horizon.web.http.ConfigurableHttpProtocolAdapter configurableAdapter = 
+                    (horizon.web.http.ConfigurableHttpProtocolAdapter) httpAdapter;
+                
+                // Create and register annotation-based resolver
+                AnnotationBasedHttpIntentResolver annotationResolver = new AnnotationBasedHttpIntentResolver();
+                for (ConductorMethod method : methods) {
+                    annotationResolver.registerConductorMethod(method);
+                }
+                configurableAdapter.addResolver(annotationResolver);
+                
+                logger.debug("Registered {} HTTP mappings", methods.size());
+            }
         } catch (Exception e) {
-            logger.debug("Could not register protocol mappings: {}", e.getMessage());
+            logger.debug("Could not register HTTP mappings: {}", e.getMessage());
         }
     }
     
@@ -171,7 +178,7 @@ public class ConductorScanner {
     public static class ConductorMethodAdapter implements horizon.core.Conductor<Object, Object> {
         public final ConductorMethod method;  // public for access validation
         
-        ConductorMethodAdapter(ConductorMethod method) {
+        public ConductorMethodAdapter(ConductorMethod method) {
             this.method = method;
         }
         

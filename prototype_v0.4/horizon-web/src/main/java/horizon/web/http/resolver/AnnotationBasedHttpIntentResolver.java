@@ -15,8 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * HTTP Intent resolver that uses annotations to map HTTP requests to intents.
- * Supports both the new schema-based approach and legacy annotations.
+ * HTTP Intent resolver that uses @ProtocolAccess annotations to map HTTP requests to intents.
  */
 public class AnnotationBasedHttpIntentResolver implements IntentResolver<FullHttpRequest> {
     private final Map<String, Map<HttpMethod, String>> routeMap = new HashMap<>();
@@ -32,27 +31,10 @@ public class AnnotationBasedHttpIntentResolver implements IntentResolver<FullHtt
         Method method = conductorMethod.getMethod();
         String intent = conductorMethod.getIntent();
         
-        // Try to get schema from ProtocolAccessValidator
+        // Get schema from ProtocolAccessValidator
         String schema = accessValidator.getProtocolSchema(ProtocolNames.HTTP, method);
         if (schema != null && !schema.isEmpty()) {
             parseAndRegisterRoute(schema, intent);
-            return;
-        }
-        
-        // Check legacy @ProtocolMapping annotations
-        ProtocolMapping[] mappings = method.getAnnotationsByType(ProtocolMapping.class);
-        for (ProtocolMapping mapping : mappings) {
-            if (ProtocolNames.HTTP.equals(mapping.protocol())) {
-                for (String route : mapping.mapping()) {
-                    parseAndRegisterRoute(route, intent);
-                }
-            }
-        }
-        
-        // Check legacy @HttpResource annotations
-        HttpResource[] httpResources = method.getAnnotationsByType(HttpResource.class);
-        for (HttpResource resource : httpResources) {
-            parseAndRegisterRoute(resource.value(), intent);
         }
     }
     

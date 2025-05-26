@@ -55,7 +55,7 @@ public class DemoApplication {
         logger.info("║  🌟 Annotation-based Conductors                          ║");
         logger.info("║  🌟 Protocol Aggregation                                 ║");
         logger.info("║  🔒 Protocol Access Control                              ║");
-        logger.info("║  🌟 Write Once, Use Everywhere!                          ║");
+        logger.info("║  🌟 Automatic DTO Serialization                          ║");
         logger.info("║                                                          ║");
         logger.info("╠══════════════════════════════════════════════════════════╣");
         logger.info("║ HTTP Endpoints (port 8080):                              ║");
@@ -91,7 +91,7 @@ public class DemoApplication {
         logger.info("╠══════════════════════════════════════════════════════════╣");
         logger.info("║                                                          ║");
         logger.info("║  The SAME @Conductor classes handle BOTH protocols! 🎉   ║");
-        logger.info("║  But with proper security controls! 🔒                   ║");
+        logger.info("║  With automatic DTO serialization! 🚀                    ║");
         logger.info("║                                                          ║");
         logger.info("╚══════════════════════════════════════════════════════════╝");
     }
