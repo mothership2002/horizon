@@ -2,6 +2,7 @@ package horizon.web.http;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import horizon.web.common.AbstractWebProtocolAdapter;
+import horizon.web.http.dto.DtoMapper;
 import horizon.web.http.resolver.HttpIntentResolver;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -10,6 +11,7 @@ import io.netty.util.CharsetUtil;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Adapts HTTP requests and responses to Horizon format.
@@ -19,12 +21,12 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
     private static final ObjectMapper objectMapper = new ObjectMapper();
     
     private final HttpIntentResolver intentResolver = new HttpIntentResolver();
-    private final horizon.web.http.dto.DtoMapper dtoMapper = new horizon.web.http.dto.DtoMapper();
+    private final DtoMapper dtoMapper = new DtoMapper();
     
     /**
      * Registers a DTO mapper configuration.
      */
-    public void registerDtoMapper(java.util.function.Consumer<horizon.web.http.dto.DtoMapper> configurator) {
+    public void registerDtoMapper(Consumer<DtoMapper> configurator) {
         configurator.accept(dtoMapper);
     }
     
