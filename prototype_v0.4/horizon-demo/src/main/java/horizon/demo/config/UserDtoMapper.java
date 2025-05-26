@@ -1,7 +1,7 @@
 package horizon.demo.config;
 
 import horizon.demo.dto.*;
-import horizon.http.dto.DtoMapper;
+import horizon.web.http.dto.DtoMapper;
 
 /**
  * Configures the DtoMapper with the DTO classes for the UserConductor intents.

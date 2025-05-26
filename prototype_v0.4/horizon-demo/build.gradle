@@ -1,7 +1,6 @@
 dependencies {
     implementation project(':horizon-core')
-    implementation project(':horizon-http')
-    implementation project(':horizon-websocket')
+    implementation project(':horizon-web')
 
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'

@@ -30,14 +30,14 @@ The entry point for each protocol. Each protocol has its own Foyer that adapts p
 @Conductor(namespace = "user")
 @ProtocolAccess({"HTTP", "WebSocket"})  // Explicit protocol access
 public class UserConductor {
-    
+
     @Intent("create")
     @ProtocolMapping(protocol = "HTTP", mapping = {"POST /users"})
     @ProtocolMapping(protocol = "WebSocket", mapping = {"user.create"})
     public User createUser(CreateUserRequest request) {
         return userService.createUser(request);
     }
-    
+
     @Intent("bulkImport")
     @ProtocolMapping(protocol = "HTTP", mapping = {"POST /users/import"})
     @ProtocolAccess({"HTTP"})  // Only accessible via HTTP
@@ -102,7 +102,7 @@ public class UserGrpcService {
 @Conductor(namespace = "user")
 @ProtocolAccess({"HTTP", "WebSocket", "gRPC"})
 public class UserConductor {
-    
+
     @Intent("create")
     @ProtocolMapping(protocol = "HTTP", mapping = {"POST /users"})
     @ProtocolMapping(protocol = "WebSocket", mapping = {"user.create"})
@@ -126,7 +126,8 @@ Version 0.4 is a complete rewrite focusing on:
 ### Current Progress
 - ✅ Core Framework
 - ✅ HTTP Protocol Support
-- 🚧 WebSocket Protocol Support
+- ✅ WebSocket Protocol Support
+- ✅ Unified Web Module (HTTP + WebSocket)
 - 📋 gRPC Protocol (Planned)
 - 📋 GraphQL Protocol (Planned)
 
