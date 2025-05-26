@@ -1,6 +1,7 @@
 package horizon.web.websocket;
 
 import horizon.core.protocol.ProtocolAdapter;
+import horizon.core.protocol.ProtocolNames;
 import horizon.web.common.AbstractWebProtocol;
 
 /**
@@ -13,7 +14,7 @@ public class WebSocketProtocol extends AbstractWebProtocol<WebSocketMessage, Web
     
     @Override
     public String getName() {
-        return "WebSocket";
+        return ProtocolNames.WEBSOCKET;
     }
     
     @Override

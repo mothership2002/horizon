@@ -4,11 +4,14 @@ import java.lang.annotation.*;
 
 /**
  * Convenience annotation for WebSocket protocol mappings.
+ * 
+ * @deprecated Use @ProtocolAccess(schema = @ProtocolSchema(protocol = "WebSocket", value = "event.name")) instead
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Repeatable(WebSocketResources.class)
+@Deprecated
 public @interface WebSocketResource {
     /**
      * WebSocket event name or pattern.

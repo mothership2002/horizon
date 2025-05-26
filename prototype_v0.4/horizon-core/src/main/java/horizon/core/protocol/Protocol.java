@@ -2,9 +2,12 @@ package horizon.core.protocol;
 
 /**
  * Defines a protocol that can be used in the Horizon Framework.
- * This is a marker interface that all protocol definitions must implement.
+ * Each protocol must provide its adapter for request/response handling.
+ * 
+ * @param <I> the protocol-specific input type
+ * @param <O> the protocol-specific output type
  */
-public interface Protocol {
+public interface Protocol<I, O> {
     /**
      * Gets the unique name of this protocol.
      */
@@ -16,4 +19,12 @@ public interface Protocol {
     default String getDisplayName() {
         return getName();
     }
+    
+    /**
+     * Creates a protocol adapter for this protocol.
+     * The adapter handles conversion between protocol-specific and framework formats.
+     * 
+     * @return a new protocol adapter
+     */
+    ProtocolAdapter<I, O> createAdapter();
 }

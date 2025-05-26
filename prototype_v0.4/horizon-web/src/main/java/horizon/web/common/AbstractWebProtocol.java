@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
  * @param <I> the protocol-specific input type
  * @param <O> the protocol-specific output type
  */
-public abstract class AbstractWebProtocol<I, O> implements Protocol {
+public abstract class AbstractWebProtocol<I, O> implements Protocol<I, O> {
     private static final Logger logger = LoggerFactory.getLogger(AbstractWebProtocol.class);
     
     /**
@@ -37,6 +37,7 @@ public abstract class AbstractWebProtocol<I, O> implements Protocol {
      *
      * @return a new protocol adapter
      */
+    @Override
     public abstract ProtocolAdapter<I, O> createAdapter();
     
     /**

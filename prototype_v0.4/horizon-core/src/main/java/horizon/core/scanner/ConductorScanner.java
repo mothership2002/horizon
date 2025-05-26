@@ -3,7 +3,10 @@ package horizon.core.scanner;
 import horizon.core.ProtocolAggregator;
 import horizon.core.annotation.Conductor;
 import horizon.core.annotation.Intent;
+import horizon.core.annotation.ProtocolAccess;
+import horizon.core.annotation.ProtocolSchema;
 import horizon.core.conductor.ConductorMethod;
+import horizon.core.protocol.ProtocolNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

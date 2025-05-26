@@ -1,32 +1,22 @@
 package horizon.core.protocol;
 
 /**
- * Built-in protocols supported by Horizon Framework.
- * Using enum for compile-time safety and standardization.
+ * Constants for built-in protocol names.
+ * Use these constants when specifying protocols in annotations.
  */
-public enum BuiltInProtocols implements Protocol {
-    HTTP("HTTP", "HyperText Transfer Protocol"),
-    WEBSOCKET("WebSocket", "WebSocket Protocol"),
-    GRPC("gRPC", "gRPC Remote Procedure Call"),
-    GRAPHQL("GraphQL", "GraphQL Query Language"),
-    MQTT("MQTT", "Message Queuing Telemetry Transport"),
-    AMQP("AMQP", "Advanced Message Queuing Protocol");
+public final class ProtocolNames {
+    // Web protocols
+    public static final String HTTP = "HTTP";
+    public static final String WEBSOCKET = "WebSocket";
     
-    private final String name;
-    private final String displayName;
+    // RPC protocols
+    public static final String GRPC = "gRPC";
+    public static final String GRAPHQL = "GraphQL";
     
-    BuiltInProtocols(String name, String displayName) {
-        this.name = name;
-        this.displayName = displayName;
-    }
+    // Messaging protocols
+    public static final String MQTT = "MQTT";
+    public static final String AMQP = "AMQP";
     
-    @Override
-    public String getName() {
-        return name;
-    }
-    
-    @Override
-    public String getDisplayName() {
-        return displayName;
-    }
+    // Prevent instantiation
+    private ProtocolNames() {}
 }

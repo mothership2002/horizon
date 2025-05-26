@@ -1,38 +1,58 @@
 package horizon.web.http.resolver;
 
-import horizon.core.annotation.ProtocolMapping;
+import horizon.core.annotation.*;
 import horizon.core.conductor.ConductorMethod;
 import horizon.core.protocol.IntentResolver;
+import horizon.core.protocol.ProtocolNames;
+import horizon.core.security.ProtocolAccessValidator;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * HTTP Intent resolver that uses @ProtocolMapping annotations.
- * This class extracts intents from HTTP requests based on annotations.
+ * HTTP Intent resolver that uses annotations to map HTTP requests to intents.
+ * Supports both the new schema-based approach and legacy annotations.
  */
 public class AnnotationBasedHttpIntentResolver implements IntentResolver<FullHttpRequest> {
     private final Map<String, Map<HttpMethod, String>> routeMap = new HashMap<>();
     private final Map<String, Pattern> patternCache = new HashMap<>();
+    private final ProtocolAccessValidator accessValidator = new ProtocolAccessValidator();
     
     /**
      * Registers a conductor method with its protocol mappings.
      *
-     * @param method the conductor method to register
+     * @param conductorMethod the conductor method to register
      */
-    public void registerConductorMethod(ConductorMethod method) {
-        ProtocolMapping[] mappings = method.getMethod().getAnnotationsByType(ProtocolMapping.class);
+    public void registerConductorMethod(ConductorMethod conductorMethod) {
+        Method method = conductorMethod.getMethod();
+        String intent = conductorMethod.getIntent();
         
+        // Try to get schema from ProtocolAccessValidator
+        String schema = accessValidator.getProtocolSchema(ProtocolNames.HTTP, method);
+        if (schema != null && !schema.isEmpty()) {
+            parseAndRegisterRoute(schema, intent);
+            return;
+        }
+        
+        // Check legacy @ProtocolMapping annotations
+        ProtocolMapping[] mappings = method.getAnnotationsByType(ProtocolMapping.class);
         for (ProtocolMapping mapping : mappings) {
-            if ("HTTP".equals(mapping.protocol())) {
-                for (String resource : mapping.resources()) {
-                    parseAndRegisterRoute(resource, method.getIntent());
+            if (ProtocolNames.HTTP.equals(mapping.protocol())) {
+                for (String route : mapping.mapping()) {
+                    parseAndRegisterRoute(route, intent);
                 }
             }
+        }
+        
+        // Check legacy @HttpResource annotations
+        HttpResource[] httpResources = method.getAnnotationsByType(HttpResource.class);
+        for (HttpResource resource : httpResources) {
+            parseAndRegisterRoute(resource.value(), intent);
         }
     }
     

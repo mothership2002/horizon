@@ -4,12 +4,14 @@ import java.lang.annotation.*;
 
 /**
  * Convenience annotation for HTTP protocol mappings.
- * This is a shorthand for @ProtocolMapping with protocol="HTTP".
+ * 
+ * @deprecated Use @ProtocolAccess(schema = @ProtocolSchema(protocol = "HTTP", value = "METHOD /path")) instead
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Repeatable(HttpResources.class)
+@Deprecated
 public @interface HttpResource {
     /**
      * HTTP method and path.

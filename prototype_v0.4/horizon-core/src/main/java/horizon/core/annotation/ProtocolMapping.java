@@ -1,32 +1,33 @@
 package horizon.core.annotation;
 
-import horizon.core.protocol.Protocol;
 import java.lang.annotation.*;
 
 /**
  * Maps an intent method to specific protocol(s) with their routing information.
- * Having a @ProtocolMapping automatically grants access to that protocol.
+ * 
+ * @deprecated Use @ProtocolAccess(schema = @ProtocolSchema(...)) instead for better integration
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Repeatable(ProtocolMappings.class)
+@Deprecated
 public @interface ProtocolMapping {
     /**
      * The protocol this mapping applies to.
-     * Can be either a BuiltInProtocols enum name or a custom protocol name.
+     * Use constants from ProtocolNames (e.g., ProtocolNames.HTTP) or custom protocol names.
      */
     String protocol();
     
     /**
-     * Protocol-specific resource identifiers.
+     * Protocol-specific mapping strings.
      * Examples:
      * - HTTP: "GET /users/{id}", "POST /users"
      * - WebSocket: "user.create", "user.update"
      * - gRPC: "UserService.CreateUser"
      * - GraphQL: "mutation createUser"
      */
-    String[] resources();
+    String[] mapping();
     
     /**
      * Additional protocol-specific attributes as key-value pairs.

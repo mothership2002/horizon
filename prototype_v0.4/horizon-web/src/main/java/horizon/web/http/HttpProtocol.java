@@ -1,6 +1,7 @@
 package horizon.web.http;
 
 import horizon.core.protocol.ProtocolAdapter;
+import horizon.core.protocol.ProtocolNames;
 import horizon.web.common.AbstractWebProtocol;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
@@ -15,7 +16,7 @@ public class HttpProtocol extends AbstractWebProtocol<FullHttpRequest, FullHttpR
     
     @Override
     public String getName() {
-        return "HTTP";
+        return ProtocolNames.HTTP;
     }
     
     @Override
