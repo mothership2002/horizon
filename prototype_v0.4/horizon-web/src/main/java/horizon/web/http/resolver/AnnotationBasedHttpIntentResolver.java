@@ -1,6 +1,5 @@
 package horizon.web.http.resolver;
 
-import horizon.core.annotation.*;
 import horizon.core.conductor.ConductorMethod;
 import horizon.core.protocol.IntentResolver;
 import horizon.core.protocol.ProtocolNames;
@@ -52,7 +51,7 @@ public class AnnotationBasedHttpIntentResolver implements IntentResolver<FullHtt
         String path = parts[1];
         
         // Convert path parameters to regex
-        String regexPath = path.replaceAll("\\{([^}]+)\\}", "([^/]+)");
+        String regexPath = path.replaceAll("\\{([^}]+)}", "([^/]+)");
         Pattern pattern = Pattern.compile("^" + regexPath + "$");
         patternCache.put(path, pattern);
         
@@ -65,7 +64,7 @@ public class AnnotationBasedHttpIntentResolver implements IntentResolver<FullHtt
         String uri = request.uri().split("\\?")[0];
         HttpMethod method = request.method();
         
-        // Try exact match first
+        // Try the exact match first
         Map<HttpMethod, String> methodMap = routeMap.get(uri);
         if (methodMap != null && methodMap.containsKey(method)) {
             return methodMap.get(method);

@@ -6,7 +6,7 @@ import java.lang.reflect.Parameter;
 import java.util.Map;
 
 /**
- * Represents a method within a Conductor that handles a specific intent.
+ * Represents a method within a Conductor that handles specific intent.
  */
 public class ConductorMethod {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -39,7 +39,6 @@ public class ConductorMethod {
      * Invokes this conductor method with the given payload.
      * Automatically converts the payload to the correct parameter type.
      */
-    @SuppressWarnings("unchecked")
     public Object invoke(Object payload) throws Exception {
         if (parameterType == null) {
             // No parameters

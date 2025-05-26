@@ -155,23 +155,20 @@ public class ProtocolAggregator {
             this.accessValidator = new ProtocolAccessValidator();
         }
 
-        @SuppressWarnings("unchecked")
         HorizonContext process(HorizonContext context) {
             String intent = context.getIntent();
             String protocol = (String) context.getAttribute("protocol");
             logger.debug("Processing intent: {} from protocol: {} [{}]", intent, protocol, context.getTraceId());
 
             try {
-                // Find conductor for this intent
+                // Find a conductor for this intent
                 Conductor<Object, Object> conductor = conductorRegistry.find(intent);
                 if (conductor == null) {
                     throw new IllegalArgumentException("No conductor found for intent: " + intent);
                 }
                 
                 // Validate protocol access
-                if (conductor instanceof ConductorScanner.ConductorMethodAdapter) {
-                    ConductorScanner.ConductorMethodAdapter adapter = 
-                        (ConductorScanner.ConductorMethodAdapter) conductor;
+                if (conductor instanceof ConductorScanner.ConductorMethodAdapter adapter) {
                     if (!accessValidator.hasAccess(protocol, adapter.method)) {
                         throw new SecurityException(
                             String.format("Protocol '%s' is not allowed to access intent '%s'", protocol, intent)
@@ -190,6 +187,10 @@ public class ProtocolAggregator {
             }
 
             return context;
+        }
+
+        public Map<String, ConductorMethod> getConductorMethods() {
+            return conductorMethods;
         }
     }
 

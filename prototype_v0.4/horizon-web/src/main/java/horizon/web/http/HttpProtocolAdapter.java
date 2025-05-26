@@ -104,7 +104,7 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
                 QueryStringDecoder queryDecoder = new QueryStringDecoder(uri);
                 queryDecoder.parameters().forEach((key, values) -> {
                     if (!values.isEmpty()) {
-                        payload.put(key, values.size() == 1 ? values.get(0) : values);
+                        payload.put(key, values.size() == 1 ? values.getFirst() : values);
                     }
                 });
                 
@@ -156,20 +156,9 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
         try {
             String json = objectMapper.writeValueAsString(errorBody);
             ByteBuf content = Unpooled.copiedBuffer(json, CharsetUtil.UTF_8);
-            
-            HttpResponseStatus status = HttpResponseStatus.INTERNAL_SERVER_ERROR;
-            if (error instanceof IllegalArgumentException) {
-                status = HttpResponseStatus.BAD_REQUEST;
-            } else if (error instanceof SecurityException) {
-                status = HttpResponseStatus.FORBIDDEN;
-            }
-            
-            FullHttpResponse response = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1,
-                status,
-                content
-            );
-            
+
+            FullHttpResponse response = getFullHttpResponse(error, content);
+
             response.headers()
                 .set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=UTF-8")
                 .setInt(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes());
@@ -179,7 +168,23 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
             return createFallbackErrorResponse(e, request);
         }
     }
-    
+
+    private FullHttpResponse getFullHttpResponse(Throwable error, ByteBuf content) {
+        HttpResponseStatus status = HttpResponseStatus.INTERNAL_SERVER_ERROR;
+        if (error instanceof IllegalArgumentException) {
+            status = HttpResponseStatus.BAD_REQUEST;
+        } else if (error instanceof SecurityException) {
+            status = HttpResponseStatus.FORBIDDEN;
+        }
+
+        FullHttpResponse response = new DefaultFullHttpResponse(
+            HttpVersion.HTTP_1_1,
+            status,
+                content
+        );
+        return response;
+    }
+
     @Override
     protected FullHttpResponse createFallbackErrorResponse(Throwable error, FullHttpRequest request) {
         // Fallback error response
