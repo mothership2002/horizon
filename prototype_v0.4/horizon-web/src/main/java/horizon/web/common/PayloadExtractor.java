@@ -32,7 +32,16 @@ public class PayloadExtractor {
      */
     public Object extractHttpPayload(FullHttpRequest request, String intent) {
         try {
-            // Get the parameter type from conductor method
+            ConductorMethod conductorMethod = getConductorMethod(intent);
+            
+            // Check if method has annotated parameters
+            if (conductorMethod != null && conductorMethod.hasAnnotatedParameters()) {
+                // Build context for annotated parameters
+                Map<String, Object> context = buildHttpContext(request, intent);
+                return context;
+            }
+            
+            // Legacy single-parameter extraction
             Class<?> parameterType = getParameterType(intent);
             
             // Build a unified data structure from all sources
@@ -66,6 +75,27 @@ public class PayloadExtractor {
     }
     
     /**
+     * Builds context map for methods with annotated parameters.
+     */
+    private Map<String, Object> buildHttpContext(FullHttpRequest request, String intent) throws Exception {
+        Map<String, Object> context = new HashMap<>();
+        
+        // Extract path parameters with proper naming
+        extractPathParametersToContext(request, intent, context);
+        
+        // Extract query parameters with proper naming
+        extractQueryParametersToContext(request, context);
+        
+        // Extract headers
+        extractHeadersToContext(request, context);
+        
+        // Extract body
+        extractBodyToContext(request, context);
+        
+        return context;
+    }
+    
+    /**
      * Extracts and converts payload for WebSocket messages.
      */
     public Object extractWebSocketPayload(Map<String, Object> data, String sessionId, String intent) {
@@ -95,19 +125,107 @@ public class PayloadExtractor {
     }
     
     /**
+     * Gets the conductor method for an intent.
+     */
+    private ConductorMethod getConductorMethod(String intent) {
+        return aggregator != null ? aggregator.getConductorMethod(intent) : null;
+    }
+    
+    /**
      * Gets the parameter type for a conductor method.
      */
     private Class<?> getParameterType(String intent) {
-        if (aggregator == null) {
-            return null;
-        }
+        ConductorMethod method = getConductorMethod(intent);
+        return method != null ? method.getParameterType() : null;
+    }
+    
+    /**
+     * Extracts path parameters to context with proper naming convention.
+     */
+    private void extractPathParametersToContext(FullHttpRequest request, String intent, Map<String, Object> context) {
+        String uri = request.uri().split("\\?")[0];
+        String[] uriParts = uri.split("/");
         
-        ConductorMethod method = aggregator.getConductorMethod(intent);
-        if (method != null) {
-            return method.getParameterType();
+        // TODO: Get actual path pattern from route configuration
+        // For now, extract numeric IDs
+        for (String part : uriParts) {
+            if (part.matches("\\d+")) {
+                context.put("path.id", Long.parseLong(part));
+            }
         }
+    }
+    
+    /**
+     * Extracts query parameters to context with proper naming convention.
+     */
+    private void extractQueryParametersToContext(FullHttpRequest request, Map<String, Object> context) {
+        QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
         
-        return null;
+        queryDecoder.parameters().forEach((key, values) -> {
+            if (!values.isEmpty()) {
+                if (values.size() == 1) {
+                    context.put("query." + key, parseValue(values.get(0)));
+                } else {
+                    context.put("query." + key, values.toArray(new String[0]));
+                }
+            }
+        });
+    }
+    
+    /**
+     * Extracts headers to context with proper naming convention.
+     */
+    private void extractHeadersToContext(FullHttpRequest request, Map<String, Object> context) {
+        request.headers().forEach(entry -> {
+            context.put("header." + entry.getKey(), entry.getValue());
+        });
+    }
+    
+    /**
+     * Extracts body to context.
+     */
+    private void extractBodyToContext(FullHttpRequest request, Map<String, Object> context) throws Exception {
+        if (request.content().readableBytes() > 0) {
+            String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
+            
+            if (contentType != null && contentType.contains("application/json")) {
+                String json = request.content().toString(CharsetUtil.UTF_8);
+                Object body = objectMapper.readValue(json, Object.class);
+                context.put("body", body);
+            } else if (contentType != null && contentType.contains("application/x-www-form-urlencoded")) {
+                // Form data
+                String formData = request.content().toString(CharsetUtil.UTF_8);
+                QueryStringDecoder formDecoder = new QueryStringDecoder("?" + formData, false);
+                
+                Map<String, Object> formMap = new HashMap<>();
+                formDecoder.parameters().forEach((key, values) -> {
+                    if (!values.isEmpty()) {
+                        formMap.put(key, values.size() == 1 ? values.get(0) : values);
+                    }
+                });
+                context.put("body", formMap);
+            }
+        }
+    }
+    
+    /**
+     * Parses a string value to appropriate type.
+     */
+    private Object parseValue(String value) {
+        // Try to parse as number
+        try {
+            if (value.contains(".")) {
+                return Double.parseDouble(value);
+            } else {
+                return Long.parseLong(value);
+            }
+        } catch (NumberFormatException e) {
+            // Not a number
+            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                return Boolean.parseBoolean(value);
+            }
+            return value;
+        }
     }
     
     /**
