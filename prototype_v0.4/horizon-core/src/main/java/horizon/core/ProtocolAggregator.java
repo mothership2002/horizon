@@ -1,6 +1,7 @@
 package horizon.core;
 
 import horizon.core.conductor.ConductorMethod;
+import horizon.core.conductor.ConductorMethodCache;
 import horizon.core.protocol.Protocol;
 import horizon.core.protocol.ProtocolAdapter;
 import horizon.core.scanner.ConductorScanner;
@@ -85,6 +86,7 @@ public class ProtocolAggregator {
      */
     public void registerConductorMethod(ConductorMethod method) {
         conductorMethods.put(method.getIntent(), method);
+        ConductorMethodCache.getInstance().cache(method.getIntent(), method);
         registerConductor(new ConductorScanner.ConductorMethodAdapter(method));
     }
 

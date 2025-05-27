@@ -160,4 +160,40 @@ public class AdvancedUserConductor {
         
         return result;
     }
+    
+    /**
+     * Complex path parameters example.
+     * HTTP: GET /api/advanced/organizations/{orgId}/departments/{deptId}/employees/{empId}
+     */
+    @Intent("getEmployee")
+    @ProtocolAccess(
+        schema = @ProtocolSchema(
+            protocol = ProtocolNames.HTTP,
+            value = "GET /api/advanced/organizations/{orgId}/departments/{deptId}/employees/{empId}"
+        )
+    )
+    public Map<String, Object> getEmployee(
+            @PathParam("orgId") Long orgId,
+            @PathParam("deptId") Long deptId,
+            @PathParam("empId") Long empId,
+            @QueryParam(value = "includeHistory", defaultValue = "false") Boolean includeHistory
+    ) {
+        logger.info("Getting employee - org: {}, dept: {}, emp: {}, history: {}", 
+                   orgId, deptId, empId, includeHistory);
+        
+        Map<String, Object> employee = new HashMap<>();
+        employee.put("id", empId);
+        employee.put("name", "Employee " + empId);
+        employee.put("organizationId", orgId);
+        employee.put("departmentId", deptId);
+        
+        if (includeHistory) {
+            employee.put("history", new Object[]{
+                Map.of("date", "2023-01-15", "event", "Joined"),
+                Map.of("date", "2023-06-01", "event", "Promoted")
+            });
+        }
+        
+        return employee;
+    }
 }

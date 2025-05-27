@@ -9,6 +9,8 @@ import io.netty.util.CharsetUtil;
 import java.util.HashMap;
 import java.util.Map;
 
+import horizon.web.http.resolver.AnnotationBasedHttpIntentResolver;
+
 /**
  * Unified payload extractor for web protocols.
  * Converts protocol-specific requests to context maps for ConductorMethod.
@@ -121,10 +123,21 @@ public class PayloadExtractor {
     }
     
     private void extractPathParametersToContext(FullHttpRequest request, String intent, Map<String, Object> context) {
-        String uri = request.uri().split("\\?")[0];
+        // First try to get path params from AnnotationBasedHttpIntentResolver
+        try {
+            Map<String, String> pathParams = AnnotationBasedHttpIntentResolver.getPathParams(request);
+            if (!pathParams.isEmpty()) {
+                pathParams.forEach((key, value) -> {
+                    context.put("path." + key, parseValue(value));
+                });
+                return;
+            }
+        } catch (Exception e) {
+            // Fallback to simple extraction
+        }
         
-        // TODO: Get actual route pattern and extract named parameters
-        // For now, extract numeric IDs
+        // Fallback: Extract numeric IDs from URI
+        String uri = request.uri().split("\\?")[0];
         String[] parts = uri.split("/");
         for (int i = 0; i < parts.length; i++) {
             String part = parts[i];
