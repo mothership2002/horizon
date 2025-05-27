@@ -3,11 +3,13 @@ package horizon.core.conductor;
 import horizon.core.annotation.*;
 import horizon.core.util.JsonUtils;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Represents a method within a Conductor that handles specific intent.
@@ -35,38 +37,41 @@ public class ConductorMethod {
         Parameter[] params = method.getParameters();
 
         for (int i = 0; i < params.length; i++) {
-            Parameter param = params[i];
-            ParameterInfo info = new ParameterInfo();
-            info.parameter = param;
-            info.type = param.getType();
-            info.index = i;
-
-            // Check for parameter annotations
-            if (param.isAnnotationPresent(PathParam.class)) {
-                PathParam ann = param.getAnnotation(PathParam.class);
-                info.source = ParameterSource.PATH;
-                info.name = ann.value();
-            } else if (param.isAnnotationPresent(QueryParam.class)) {
-                QueryParam ann = param.getAnnotation(QueryParam.class);
-                info.source = ParameterSource.QUERY;
-                info.name = ann.value();
-                info.required = ann.required();
-                info.defaultValue = ann.defaultValue().isEmpty() ? null : ann.defaultValue();
-            } else if (param.isAnnotationPresent(Header.class)) {
-                Header ann = param.getAnnotation(Header.class);
-                info.source = ParameterSource.HEADER;
-                info.name = ann.value();
-                info.required = ann.required();
-            } else {
-                // No annotation - assume it's the main payload/body
-                info.source = ParameterSource.BODY;
-                info.name = param.getName();
-            }
-
-            paramInfos.add(info);
+            paramInfos.add(analyzeParameter(params[i], i));
         }
 
         return paramInfos;
+    }
+
+    private ParameterInfo analyzeParameter(Parameter param, int i) {
+        ParameterInfo info = new ParameterInfo();
+
+        info.parameter = param;
+        info.type = param.getType();
+        info.index = i;
+//        Annotation[] declaredAnnotations = param.getDeclaredAnnotations();
+        // Check for parameter annotations
+        if (param.isAnnotationPresent(PathParam.class)) {
+            PathParam ann = param.getAnnotation(PathParam.class);
+            info.source = ParameterSource.PATH;
+            info.name = Objects.requireNonNull(ann).value();
+        } else if (param.isAnnotationPresent(QueryParam.class)) {
+            QueryParam ann = param.getAnnotation(QueryParam.class);
+            info.source = ParameterSource.QUERY;
+            info.name = Objects.requireNonNull(ann).value();
+            info.required = ann.required();
+            info.defaultValue = ann.defaultValue().isEmpty() ? null : ann.defaultValue();
+        } else if (param.isAnnotationPresent(Header.class)) {
+            Header ann = param.getAnnotation(Header.class);
+            info.source = ParameterSource.HEADER;
+            info.name = Objects.requireNonNull(ann).value();
+            info.required = ann.required();
+        } else {
+            // No annotation - assume it's the main payload/body
+            info.source = ParameterSource.BODY;
+            info.name = param.getName();
+        }
+        return info;
     }
 
     /**
