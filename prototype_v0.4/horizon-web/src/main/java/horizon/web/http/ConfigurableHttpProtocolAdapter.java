@@ -1,5 +1,6 @@
 package horizon.web.http;
 
+import horizon.core.ProtocolAggregator;
 import horizon.core.protocol.IntentResolver;
 import io.netty.handler.codec.http.FullHttpRequest;
 
@@ -17,6 +18,15 @@ public class ConfigurableHttpProtocolAdapter extends HttpProtocolAdapter {
     public ConfigurableHttpProtocolAdapter() {
         // Default resolver uses the existing smart extraction logic
         this.defaultResolver = new DefaultHttpIntentResolver();
+    }
+    
+    /**
+     * Sets the protocol aggregator for accessing conductor metadata.
+     * This enables automatic DTO conversion based on conductor method parameters.
+     */
+    @Override
+    public void setProtocolAggregator(ProtocolAggregator aggregator) {
+        super.setProtocolAggregator(aggregator);
     }
 
     /**

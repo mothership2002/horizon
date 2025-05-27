@@ -1,8 +1,10 @@
 package horizon.web.http;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import horizon.core.ProtocolAggregator;
+import horizon.core.protocol.AggregatorAware;
 import horizon.web.common.AbstractWebProtocolAdapter;
-import horizon.web.http.dto.DtoMapper;
+import horizon.web.common.PayloadExtractor;
 import horizon.web.http.resolver.HttpIntentResolver;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -11,23 +13,26 @@ import io.netty.util.CharsetUtil;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * Adapts HTTP requests and responses to Horizon format.
  * This class extends AbstractWebProtocolAdapter to provide HTTP-specific functionality.
  */
-public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequest, FullHttpResponse> {
+public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequest, FullHttpResponse> 
+        implements AggregatorAware {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     
     private final HttpIntentResolver intentResolver = new HttpIntentResolver();
-    private final DtoMapper dtoMapper = new DtoMapper();
+    private PayloadExtractor payloadExtractor;
+    private ProtocolAggregator aggregator;
     
     /**
-     * Registers a DTO mapper configuration.
+     * Sets the protocol aggregator for accessing conductor metadata.
      */
-    public void registerDtoMapper(Consumer<DtoMapper> configurator) {
-        configurator.accept(dtoMapper);
+    @Override
+    public void setProtocolAggregator(ProtocolAggregator aggregator) {
+        this.aggregator = aggregator;
+        this.payloadExtractor = new PayloadExtractor(aggregator);
     }
     
     @Override
@@ -37,91 +42,55 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
     
     @Override
     protected Object doExtractPayload(FullHttpRequest request) {
+        String intent = extractIntent(request);
+        
+        if (payloadExtractor != null) {
+            // Use the unified payload extractor
+            return payloadExtractor.extractHttpPayload(request, intent);
+        } else {
+            // Fallback to simple Map extraction if aggregator not set
+            return extractPayloadAsMap(request);
+        }
+    }
+    
+    /**
+     * Simple payload extraction as Map (fallback method).
+     */
+    private Map<String, Object> extractPayloadAsMap(FullHttpRequest request) {
         try {
-            String intent = extractIntent(request);
+            Map<String, Object> payload = new HashMap<>();
             
-            // Check if we have a registered DTO class for this intent
-            if (dtoMapper.hasRequestDtoClass(intent)) {
-                Class<?> dtoClass = dtoMapper.getRequestDtoClass(intent);
-                
-                // Create a node to build our DTO from
-                com.fasterxml.jackson.databind.node.ObjectNode node = objectMapper.createObjectNode();
-                
-                // Extract path parameters
-                String uri = request.uri();
-                String[] parts = uri.split("\\?")[0].split("/");
-                for (String part : parts) {
-                    if (part.matches("\\d+")) {
-                        node.put("id", Long.parseLong(part));
-                    }
+            // Add method
+            payload.put("_method", request.method().name());
+            
+            // Extract path parameters
+            String uri = request.uri();
+            String[] parts = uri.split("\\?")[0].split("/");
+            for (String part : parts) {
+                if (part.matches("\\d+")) {
+                    payload.put("id", Long.parseLong(part));
                 }
-                
-                // Extract query parameters
-                QueryStringDecoder queryDecoder = new QueryStringDecoder(uri);
-                queryDecoder.parameters().forEach((key, values) -> {
-                    if (!values.isEmpty()) {
-                        if (values.size() == 1) {
-                            node.put(key, values.get(0));
-                        } else {
-                            com.fasterxml.jackson.databind.node.ArrayNode arrayNode = node.putArray(key);
-                            values.forEach(arrayNode::add);
-                        }
-                    }
-                });
-                
-                // Extract body if present
-                if (request.content().readableBytes() > 0) {
-                    String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
-                    if (contentType != null && contentType.contains("application/json")) {
-                        String json = request.content().toString(CharsetUtil.UTF_8);
-                        com.fasterxml.jackson.databind.JsonNode bodyNode = objectMapper.readTree(json);
-                        
-                        // Merge body into our node
-                        if (bodyNode.isObject()) {
-                            bodyNode.fields().forEachRemaining(entry -> 
-                                node.set(entry.getKey(), entry.getValue()));
-                        }
-                    }
-                }
-                
-                // Convert node to DTO
-                return objectMapper.treeToValue(node, dtoClass);
-            } else {
-                // Fall back to Map for backward compatibility
-                Map<String, Object> payload = new HashMap<>();
-                
-                // Add method
-                payload.put("_method", request.method().name());
-                
-                // Extract path parameters
-                String uri = request.uri();
-                String[] parts = uri.split("\\?")[0].split("/");
-                for (String part : parts) {
-                    if (part.matches("\\d+")) {
-                        payload.put("id", Long.parseLong(part));
-                    }
-                }
-                
-                // Extract query parameters
-                QueryStringDecoder queryDecoder = new QueryStringDecoder(uri);
-                queryDecoder.parameters().forEach((key, values) -> {
-                    if (!values.isEmpty()) {
-                        payload.put(key, values.size() == 1 ? values.getFirst() : values);
-                    }
-                });
-                
-                // Extract body if present
-                if (request.content().readableBytes() > 0) {
-                    String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
-                    if (contentType != null && contentType.contains("application/json")) {
-                        String json = request.content().toString(CharsetUtil.UTF_8);
-                        Map<String, Object> body = objectMapper.readValue(json, Map.class);
-                        payload.putAll(body);
-                    }
-                }
-                
-                return payload;
             }
+            
+            // Extract query parameters
+            QueryStringDecoder queryDecoder = new QueryStringDecoder(uri);
+            queryDecoder.parameters().forEach((key, values) -> {
+                if (!values.isEmpty()) {
+                    payload.put(key, values.size() == 1 ? values.get(0) : values);
+                }
+            });
+            
+            // Extract body if present
+            if (request.content().readableBytes() > 0) {
+                String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
+                if (contentType != null && contentType.contains("application/json")) {
+                    String json = request.content().toString(CharsetUtil.UTF_8);
+                    Map<String, Object> body = objectMapper.readValue(json, Map.class);
+                    payload.putAll(body);
+                }
+            }
+            
+            return payload;
         } catch (Exception e) {
             throw new RuntimeException("Failed to extract payload", e);
         }
@@ -182,7 +151,7 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
         FullHttpResponse response = new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1,
             status,
-                content
+            content
         );
         return response;
     }

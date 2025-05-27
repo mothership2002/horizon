@@ -1,6 +1,9 @@
 package horizon.web.websocket;
 
+import horizon.core.ProtocolAggregator;
+import horizon.core.protocol.AggregatorAware;
 import horizon.web.common.AbstractWebProtocolAdapter;
+import horizon.web.common.PayloadExtractor;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,7 +12,21 @@ import java.util.Map;
  * Adapts WebSocket messages to Horizon format.
  * This class extends AbstractWebProtocolAdapter to provide WebSocket-specific functionality.
  */
-public class WebSocketProtocolAdapter extends AbstractWebProtocolAdapter<WebSocketMessage, WebSocketMessage> {
+public class WebSocketProtocolAdapter extends AbstractWebProtocolAdapter<WebSocketMessage, WebSocketMessage> 
+        implements AggregatorAware {
+    
+    private PayloadExtractor payloadExtractor;
+    private ProtocolAggregator aggregator;
+    
+    /**
+     * Sets the protocol aggregator for accessing conductor metadata.
+     * This enables automatic DTO conversion based on conductor method parameters.
+     */
+    @Override
+    public void setProtocolAggregator(ProtocolAggregator aggregator) {
+        this.aggregator = aggregator;
+        this.payloadExtractor = new PayloadExtractor(aggregator);
+    }
     
     @Override
     protected String doExtractIntent(WebSocketMessage message) {
@@ -18,6 +35,21 @@ public class WebSocketProtocolAdapter extends AbstractWebProtocolAdapter<WebSock
     
     @Override
     protected Object doExtractPayload(WebSocketMessage message) {
+        String intent = message.getIntent();
+        
+        if (payloadExtractor != null) {
+            // Use the unified payload extractor
+            return payloadExtractor.extractWebSocketPayload(message.getData(), message.getSessionId(), intent);
+        } else {
+            // Fallback to simple Map extraction if aggregator not set
+            return extractPayloadAsMap(message);
+        }
+    }
+    
+    /**
+     * Simple payload extraction as Map (fallback method).
+     */
+    private Map<String, Object> extractPayloadAsMap(WebSocketMessage message) {
         Map<String, Object> payload = new HashMap<>();
         if (message.getData() != null) {
             payload.putAll(message.getData());

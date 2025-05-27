@@ -47,6 +47,11 @@ public class ProtocolAggregator {
         // Create and store the adapter
         ProtocolAdapter<I, O> adapter = protocol.createAdapter();
         adapters.put(protocolName, adapter);
+        
+        // Set aggregator reference if adapter implements AggregatorAware
+        if (adapter instanceof horizon.core.protocol.AggregatorAware) {
+            ((horizon.core.protocol.AggregatorAware) adapter).setProtocolAggregator(this);
+        }
 
         // Create a protocol-specific rendezvous that delegates to the central one
         ProtocolSpecificRendezvous<I, O> protocolRendezvous = 

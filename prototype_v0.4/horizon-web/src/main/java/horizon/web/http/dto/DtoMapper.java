@@ -5,8 +5,15 @@ import java.util.Map;
 
 /**
  * Maps intents to DTO (Data Transfer Object) classes.
- * This class is used to register and retrieve DTO classes for specific intents.
+ * 
+ * @deprecated As of version 0.5, replaced by automatic DTO resolution 
+ *             based on conductor method parameters. The framework now
+ *             automatically detects and uses the appropriate DTO type
+ *             from the conductor method signature.
+ * 
+ * @see horizon.web.common.PayloadExtractor
  */
+@Deprecated(since = "0.5", forRemoval = true)
 public class DtoMapper {
     private final Map<String, Class<?>> requestDtoClasses = new HashMap<>();
     
