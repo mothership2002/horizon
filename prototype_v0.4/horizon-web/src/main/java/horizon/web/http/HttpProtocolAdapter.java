@@ -1,8 +1,8 @@
 package horizon.web.http;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import horizon.core.ProtocolAggregator;
 import horizon.core.protocol.AggregatorAware;
+import horizon.core.util.JsonUtils;
 import horizon.web.common.AbstractWebProtocolAdapter;
 import horizon.web.common.PayloadExtractor;
 import horizon.web.http.resolver.HttpIntentResolver;
@@ -17,15 +17,14 @@ import java.util.Map;
 /**
  * Adapts HTTP requests and responses to Horizon format.
  * This class extends AbstractWebProtocolAdapter to provide HTTP-specific functionality.
+ * Uses JsonUtils for JSON operations.
  */
 public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequest, FullHttpResponse> 
         implements AggregatorAware {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    
     private final HttpIntentResolver intentResolver = new HttpIntentResolver();
     private PayloadExtractor payloadExtractor;
     private ProtocolAggregator aggregator;
-    
+
     /**
      * Sets the protocol aggregator for accessing conductor metadata.
      */
@@ -34,16 +33,16 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
         this.aggregator = aggregator;
         this.payloadExtractor = new PayloadExtractor(aggregator);
     }
-    
+
     @Override
     protected String doExtractIntent(FullHttpRequest request) {
         return intentResolver.resolveIntent(request);
     }
-    
+
     @Override
     protected Object doExtractPayload(FullHttpRequest request) {
         String intent = extractIntent(request);
-        
+
         if (payloadExtractor != null) {
             // Use the unified payload extractor
             return payloadExtractor.extractHttpPayload(request, intent);
@@ -52,17 +51,17 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
             return extractPayloadAsMap(request);
         }
     }
-    
+
     /**
      * Simple payload extraction as Map (fallback method).
      */
     private Map<String, Object> extractPayloadAsMap(FullHttpRequest request) {
         try {
             Map<String, Object> payload = new HashMap<>();
-            
+
             // Add method
             payload.put("_method", request.method().name());
-            
+
             // Extract path parameters
             String uri = request.uri();
             String[] parts = uri.split("\\?")[0].split("/");
@@ -71,7 +70,7 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
                     payload.put("id", Long.parseLong(part));
                 }
             }
-            
+
             // Extract query parameters
             QueryStringDecoder queryDecoder = new QueryStringDecoder(uri);
             queryDecoder.parameters().forEach((key, values) -> {
@@ -79,53 +78,53 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
                     payload.put(key, values.size() == 1 ? values.get(0) : values);
                 }
             });
-            
+
             // Extract body if present
             if (request.content().readableBytes() > 0) {
                 String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
                 if (contentType != null && contentType.contains("application/json")) {
                     String json = request.content().toString(CharsetUtil.UTF_8);
-                    Map<String, Object> body = objectMapper.readValue(json, Map.class);
+                    Map<String, Object> body = JsonUtils.fromJson(json, Map.class);
                     payload.putAll(body);
                 }
             }
-            
+
             return payload;
         } catch (Exception e) {
             throw new RuntimeException("Failed to extract payload", e);
         }
     }
-    
+
     @Override
     protected FullHttpResponse doBuildResponse(Object result, FullHttpRequest request) {
         try {
-            String json = objectMapper.writeValueAsString(result);
+            String json = JsonUtils.toJson(result);
             ByteBuf content = Unpooled.copiedBuffer(json, CharsetUtil.UTF_8);
-            
+
             FullHttpResponse response = new DefaultFullHttpResponse(
                 HttpVersion.HTTP_1_1,
                 HttpResponseStatus.OK,
                 content
             );
-            
+
             response.headers()
                 .set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=UTF-8")
                 .setInt(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes());
-            
+
             return response;
         } catch (Exception e) {
             throw new RuntimeException("Failed to build response", e);
         }
     }
-    
+
     @Override
     protected FullHttpResponse doBuildErrorResponse(Throwable error, FullHttpRequest request) {
         Map<String, Object> errorBody = new HashMap<>();
         errorBody.put("error", error.getMessage());
         errorBody.put("type", error.getClass().getSimpleName());
-        
+
         try {
-            String json = objectMapper.writeValueAsString(errorBody);
+            String json = JsonUtils.toJson(errorBody);
             ByteBuf content = Unpooled.copiedBuffer(json, CharsetUtil.UTF_8);
 
             FullHttpResponse response = getFullHttpResponse(error, content);
@@ -133,7 +132,7 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
             response.headers()
                 .set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=UTF-8")
                 .setInt(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes());
-            
+
             return response;
         } catch (Exception e) {
             return createFallbackErrorResponse(e, request);
@@ -165,11 +164,11 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
             HttpResponseStatus.INTERNAL_SERVER_ERROR,
             content
         );
-        
+
         response.headers()
             .set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8")
             .setInt(HttpHeaderNames.CONTENT_LENGTH, content.readableBytes());
-        
+
         return response;
     }
 }

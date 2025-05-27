@@ -1,7 +1,7 @@
 package horizon.core.conductor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import horizon.core.annotation.*;
+import horizon.core.util.JsonUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -14,13 +14,11 @@ import java.util.Map;
  * Supports annotated parameters like @PathParam, @QueryParam, @Header.
  */
 public class ConductorMethod {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    
     private final Object instance;
     private final Method method;
     private final String intent;
     private final List<ParameterInfo> parameters;
-    
+
     public ConductorMethod(Object instance, Method method, String intent) {
         this.instance = instance;
         this.method = method;
@@ -28,21 +26,21 @@ public class ConductorMethod {
         this.method.setAccessible(true);
         this.parameters = analyzeParameters();
     }
-    
+
     /**
      * Analyzes method parameters and their annotations.
      */
     private List<ParameterInfo> analyzeParameters() {
         List<ParameterInfo> paramInfos = new ArrayList<>();
         Parameter[] params = method.getParameters();
-        
+
         for (int i = 0; i < params.length; i++) {
             Parameter param = params[i];
             ParameterInfo info = new ParameterInfo();
             info.parameter = param;
             info.type = param.getType();
             info.index = i;
-            
+
             // Check for parameter annotations
             if (param.isAnnotationPresent(PathParam.class)) {
                 PathParam ann = param.getAnnotation(PathParam.class);
@@ -64,13 +62,13 @@ public class ConductorMethod {
                 info.source = ParameterSource.BODY;
                 info.name = param.getName();
             }
-            
+
             paramInfos.add(info);
         }
-        
+
         return paramInfos;
     }
-    
+
     /**
      * Invokes this conductor method with proper parameter resolution.
      */
@@ -78,7 +76,7 @@ public class ConductorMethod {
         if (parameters.isEmpty()) {
             return method.invoke(instance);
         }
-        
+
         // Convert payload to context map
         Map<String, Object> context;
         if (payload instanceof Map) {
@@ -86,38 +84,38 @@ public class ConductorMethod {
         } else {
             context = Map.of("body", payload);
         }
-        
+
         Object[] args = new Object[parameters.size()];
-        
+
         for (ParameterInfo paramInfo : parameters) {
             args[paramInfo.index] = resolveParameter(paramInfo, context);
         }
-        
+
         return method.invoke(instance, args);
     }
-    
+
     /**
      * Resolves a single parameter from the context.
      */
     private Object resolveParameter(ParameterInfo info, Map<String, Object> context) throws Exception {
         Object value = null;
-        
+
         switch (info.source) {
             case PATH:
                 value = context.get("path." + info.name);
                 break;
-                
+
             case QUERY:
                 value = context.get("query." + info.name);
                 if (value == null && info.defaultValue != null) {
                     value = info.defaultValue;
                 }
                 break;
-                
+
             case HEADER:
                 value = context.get("header." + info.name);
                 break;
-                
+
             case BODY:
                 value = context.get("body");
                 if (value == null) {
@@ -125,39 +123,39 @@ public class ConductorMethod {
                 }
                 break;
         }
-        
+
         // Validate required parameters
         if (value == null && info.required) {
             throw new IllegalArgumentException(
                 String.format("Required parameter '%s' is missing", info.name)
             );
         }
-        
+
         // Convert to target type
         if (value != null && !info.type.isAssignableFrom(value.getClass())) {
-            value = objectMapper.convertValue(value, info.type);
+            value = JsonUtils.convertValue(value, info.type);
         }
-        
+
         return value;
     }
-    
+
     // Getters
     public String getIntent() {
         return intent;
     }
-    
+
     public Method getMethod() {
         return method;
     }
-    
+
     public List<ParameterInfo> getParameters() {
         return parameters;
     }
-    
+
     public boolean hasAnnotatedParameters() {
         return parameters.stream().anyMatch(p -> p.source != ParameterSource.BODY);
     }
-    
+
     /**
      * Gets the single body parameter type if exists.
      * Used for simple DTO conversion.
@@ -169,7 +167,7 @@ public class ConductorMethod {
             .findFirst()
             .orElse(null);
     }
-    
+
     /**
      * Information about a method parameter.
      */
@@ -182,7 +180,7 @@ public class ConductorMethod {
         public boolean required = true;
         public String defaultValue;
     }
-    
+
     /**
      * Source of parameter value.
      */
