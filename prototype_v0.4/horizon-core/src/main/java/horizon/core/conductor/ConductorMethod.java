@@ -11,8 +11,7 @@ import java.util.Map;
 
 /**
  * Represents a method within a Conductor that handles specific intent.
- * Supports both simple single-parameter methods and complex multi-parameter methods
- * with annotations like @PathParam, @QueryParam, @Header.
+ * Supports annotated parameters like @PathParam, @QueryParam, @Header.
  */
 public class ConductorMethod {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -22,20 +21,12 @@ public class ConductorMethod {
     private final String intent;
     private final List<ParameterInfo> parameters;
     
-    // Legacy support for single parameter type
-    private final Class<?> parameterType;
-    
     public ConductorMethod(Object instance, Method method, String intent) {
         this.instance = instance;
         this.method = method;
         this.intent = intent;
         this.method.setAccessible(true);
         this.parameters = analyzeParameters();
-        
-        // For backward compatibility
-        this.parameterType = (parameters.size() == 1 && parameters.get(0).source == ParameterSource.BODY) 
-            ? parameters.get(0).type 
-            : null;
     }
     
     /**
@@ -71,7 +62,7 @@ public class ConductorMethod {
             } else {
                 // No annotation - assume it's the main payload/body
                 info.source = ParameterSource.BODY;
-                info.name = param.getName(); // May not be available without -parameters
+                info.name = param.getName();
             }
             
             paramInfos.add(info);
@@ -81,42 +72,19 @@ public class ConductorMethod {
     }
     
     /**
-     * Invokes this conductor method with the given payload.
-     * Automatically converts the payload to the correct parameter type.
-     * 
-     * For backward compatibility with single-parameter methods.
+     * Invokes this conductor method with proper parameter resolution.
      */
     public Object invoke(Object payload) throws Exception {
         if (parameters.isEmpty()) {
-            // No parameters
             return method.invoke(instance);
         }
         
-        // Single parameter without annotations (legacy support)
-        if (parameters.size() == 1 && parameters.get(0).source == ParameterSource.BODY) {
-            Object convertedPayload = convertPayload(payload, parameters.get(0).type);
-            return method.invoke(instance, convertedPayload);
-        }
-        
-        // Multiple parameters or annotated parameters
-        // Convert payload to context map if it isn't already
+        // Convert payload to context map
         Map<String, Object> context;
         if (payload instanceof Map) {
             context = (Map<String, Object>) payload;
         } else {
             context = Map.of("body", payload);
-        }
-        
-        return invokeWithContext(context);
-    }
-    
-    /**
-     * Invokes this conductor method with proper parameter resolution from context.
-     * This is the enhanced method that supports multiple parameters.
-     */
-    public Object invokeWithContext(Map<String, Object> context) throws Exception {
-        if (parameters.isEmpty()) {
-            return method.invoke(instance);
         }
         
         Object[] args = new Object[parameters.size()];
@@ -151,10 +119,8 @@ public class ConductorMethod {
                 break;
                 
             case BODY:
-                // For body, we might have the entire payload
                 value = context.get("body");
                 if (value == null) {
-                    // Fallback to the entire context as body (for backward compatibility)
                     value = context;
                 }
                 break;
@@ -175,24 +141,6 @@ public class ConductorMethod {
         return value;
     }
     
-    /**
-     * Legacy method for converting payload.
-     */
-    private Object convertPayload(Object payload, Class<?> targetType) throws Exception {
-        if (payload == null) {
-            return null;
-        } else if (targetType.isAssignableFrom(payload.getClass())) {
-            // Already the correct type
-            return payload;
-        } else if (payload instanceof Map && !Map.class.isAssignableFrom(targetType)) {
-            // Convert Map to DTO
-            return objectMapper.convertValue(payload, targetType);
-        } else {
-            // Try direct conversion
-            return objectMapper.convertValue(payload, targetType);
-        }
-    }
-    
     // Getters
     public String getIntent() {
         return intent;
@@ -202,16 +150,24 @@ public class ConductorMethod {
         return method;
     }
     
-    public Class<?> getParameterType() {
-        return parameterType;
-    }
-    
     public List<ParameterInfo> getParameters() {
         return parameters;
     }
     
     public boolean hasAnnotatedParameters() {
         return parameters.stream().anyMatch(p -> p.source != ParameterSource.BODY);
+    }
+    
+    /**
+     * Gets the single body parameter type if exists.
+     * Used for simple DTO conversion.
+     */
+    public Class<?> getBodyParameterType() {
+        return parameters.stream()
+            .filter(p -> p.source == ParameterSource.BODY)
+            .map(p -> p.type)
+            .findFirst()
+            .orElse(null);
     }
     
     /**

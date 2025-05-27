@@ -1,7 +1,6 @@
 package horizon.web.common;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import horizon.core.ProtocolAggregator;
 import horizon.core.conductor.ConductorMethod;
 import io.netty.handler.codec.http.*;
@@ -9,16 +8,13 @@ import io.netty.util.CharsetUtil;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Unified payload extractor for web protocols.
- * Automatically converts protocol-specific requests to appropriate DTOs or Maps.
+ * Converts protocol-specific requests to context maps for ConductorMethod.
  */
 public class PayloadExtractor {
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final Pattern PATH_PARAM_PATTERN = Pattern.compile("\\{([^}]+)\\}");
     
     private final ProtocolAggregator aggregator;
     
@@ -27,47 +23,44 @@ public class PayloadExtractor {
     }
     
     /**
-     * Extracts and converts payload for HTTP requests.
-     * Automatically uses the correct DTO type based on the conductor method parameter.
+     * Extracts payload for HTTP requests.
+     * Always returns a Map with proper context structure.
      */
     public Object extractHttpPayload(FullHttpRequest request, String intent) {
         try {
+            Map<String, Object> context = new HashMap<>();
+            
+            // Extract all components
+            extractPathParametersToContext(request, intent, context);
+            extractQueryParametersToContext(request, context);
+            extractHeadersToContext(request, context);
+            extractBodyToContext(request, context);
+            
+            // Add metadata
+            context.put("_method", request.method().name());
+            context.put("_uri", request.uri());
+            
+            // Get conductor method to check if we need simple DTO conversion
             ConductorMethod conductorMethod = getConductorMethod(intent);
-            
-            // Check if method has annotated parameters
-            if (conductorMethod != null && conductorMethod.hasAnnotatedParameters()) {
-                // Build context for annotated parameters
-                Map<String, Object> context = buildHttpContext(request, intent);
-                return context;
+            if (conductorMethod != null && !conductorMethod.hasAnnotatedParameters()) {
+                Class<?> bodyType = conductorMethod.getBodyParameterType();
+                if (bodyType != null && !Map.class.isAssignableFrom(bodyType)) {
+                    // Convert the body to the expected DTO type
+                    Object body = context.get("body");
+                    if (body == null) {
+                        // If no body, use entire context as source
+                        body = new HashMap<>(context);
+                        // Remove metadata and prefixed keys
+                        ((Map<String, Object>) body).entrySet().removeIf(e -> 
+                            e.getKey().startsWith("_") || 
+                            e.getKey().contains(".")
+                        );
+                    }
+                    return objectMapper.convertValue(body, bodyType);
+                }
             }
             
-            // Legacy single-parameter extraction
-            Class<?> parameterType = getParameterType(intent);
-            
-            // Build a unified data structure from all sources
-            ObjectNode dataNode = objectMapper.createObjectNode();
-            
-            // 1. Extract path parameters
-            extractPathParameters(request, intent, dataNode);
-            
-            // 2. Extract query parameters
-            extractQueryParameters(request, dataNode);
-            
-            // 3. Extract request body
-            extractRequestBody(request, dataNode);
-            
-            // 4. Add metadata
-            dataNode.put("_method", request.method().name());
-            dataNode.put("_uri", request.uri());
-            
-            // Convert to target type
-            if (parameterType != null) {
-                // If conductor expects a specific DTO
-                return objectMapper.treeToValue(dataNode, parameterType);
-            } else {
-                // If conductor expects no parameters or uses Object/Map
-                return objectMapper.treeToValue(dataNode, Map.class);
-            }
+            return context;
             
         } catch (Exception e) {
             throw new RuntimeException("Failed to extract payload for intent: " + intent, e);
@@ -75,89 +68,82 @@ public class PayloadExtractor {
     }
     
     /**
-     * Builds context map for methods with annotated parameters.
-     */
-    private Map<String, Object> buildHttpContext(FullHttpRequest request, String intent) throws Exception {
-        Map<String, Object> context = new HashMap<>();
-        
-        // Extract path parameters with proper naming
-        extractPathParametersToContext(request, intent, context);
-        
-        // Extract query parameters with proper naming
-        extractQueryParametersToContext(request, context);
-        
-        // Extract headers
-        extractHeadersToContext(request, context);
-        
-        // Extract body
-        extractBodyToContext(request, context);
-        
-        return context;
-    }
-    
-    /**
-     * Extracts and converts payload for WebSocket messages.
+     * Extracts payload for WebSocket messages.
      */
     public Object extractWebSocketPayload(Map<String, Object> data, String sessionId, String intent) {
         try {
-            // Get the parameter type from conductor method
-            Class<?> parameterType = getParameterType(intent);
+            Map<String, Object> context = new HashMap<>();
             
-            // Build unified data structure
-            Map<String, Object> payload = new HashMap<>();
+            // Add all data with proper prefixes
             if (data != null) {
-                payload.putAll(data);
+                data.forEach((key, value) -> {
+                    // Separate query parameters from body
+                    if (isQueryParam(key)) {
+                        context.put("query." + key, value);
+                    } else {
+                        context.put(key, value);
+                    }
+                });
             }
-            payload.put("_sessionId", sessionId);
             
-            // Convert to target type
-            if (parameterType != null && !Map.class.isAssignableFrom(parameterType)) {
-                // Convert to specific DTO
-                return objectMapper.convertValue(payload, parameterType);
-            } else {
-                // Return as Map
-                return payload;
+            // Add session ID
+            context.put("_sessionId", sessionId);
+            
+            // Create body from non-prefixed data
+            Map<String, Object> body = new HashMap<>();
+            context.forEach((key, value) -> {
+                if (!key.contains(".") && !key.startsWith("_")) {
+                    body.put(key, value);
+                }
+            });
+            if (!body.isEmpty()) {
+                context.put("body", body);
             }
+            
+            // Check if we need DTO conversion
+            ConductorMethod conductorMethod = getConductorMethod(intent);
+            if (conductorMethod != null && !conductorMethod.hasAnnotatedParameters()) {
+                Class<?> bodyType = conductorMethod.getBodyParameterType();
+                if (bodyType != null && !Map.class.isAssignableFrom(bodyType)) {
+                    return objectMapper.convertValue(body.isEmpty() ? data : body, bodyType);
+                }
+            }
+            
+            return context;
             
         } catch (Exception e) {
             throw new RuntimeException("Failed to extract WebSocket payload for intent: " + intent, e);
         }
     }
     
-    /**
-     * Gets the conductor method for an intent.
-     */
     private ConductorMethod getConductorMethod(String intent) {
         return aggregator != null ? aggregator.getConductorMethod(intent) : null;
     }
     
-    /**
-     * Gets the parameter type for a conductor method.
-     */
-    private Class<?> getParameterType(String intent) {
-        ConductorMethod method = getConductorMethod(intent);
-        return method != null ? method.getParameterType() : null;
-    }
-    
-    /**
-     * Extracts path parameters to context with proper naming convention.
-     */
     private void extractPathParametersToContext(FullHttpRequest request, String intent, Map<String, Object> context) {
         String uri = request.uri().split("\\?")[0];
-        String[] uriParts = uri.split("/");
         
-        // TODO: Get actual path pattern from route configuration
+        // TODO: Get actual route pattern and extract named parameters
         // For now, extract numeric IDs
-        for (String part : uriParts) {
+        String[] parts = uri.split("/");
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
             if (part.matches("\\d+")) {
+                // Check if previous part might be the parameter name
+                if (i > 0) {
+                    String prevPart = parts[i-1];
+                    if (prevPart.endsWith("s")) {
+                        // users/123 -> userId = 123
+                        String paramName = prevPart.substring(0, prevPart.length() - 1) + "Id";
+                        context.put("path." + paramName, Long.parseLong(part));
+                    }
+                }
+                // Always add as generic 'id'
                 context.put("path.id", Long.parseLong(part));
             }
         }
     }
     
-    /**
-     * Extracts query parameters to context with proper naming convention.
-     */
     private void extractQueryParametersToContext(FullHttpRequest request, Map<String, Object> context) {
         QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
         
@@ -172,18 +158,12 @@ public class PayloadExtractor {
         });
     }
     
-    /**
-     * Extracts headers to context with proper naming convention.
-     */
     private void extractHeadersToContext(FullHttpRequest request, Map<String, Object> context) {
         request.headers().forEach(entry -> {
             context.put("header." + entry.getKey(), entry.getValue());
         });
     }
     
-    /**
-     * Extracts body to context.
-     */
     private void extractBodyToContext(FullHttpRequest request, Map<String, Object> context) throws Exception {
         if (request.content().readableBytes() > 0) {
             String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
@@ -192,15 +172,25 @@ public class PayloadExtractor {
                 String json = request.content().toString(CharsetUtil.UTF_8);
                 Object body = objectMapper.readValue(json, Object.class);
                 context.put("body", body);
+                
+                // Also add body fields to root context for DTO mapping
+                if (body instanceof Map) {
+                    ((Map<String, Object>) body).forEach((key, value) -> {
+                        if (!context.containsKey(key)) {
+                            context.put(key, value);
+                        }
+                    });
+                }
             } else if (contentType != null && contentType.contains("application/x-www-form-urlencoded")) {
-                // Form data
                 String formData = request.content().toString(CharsetUtil.UTF_8);
                 QueryStringDecoder formDecoder = new QueryStringDecoder("?" + formData, false);
                 
                 Map<String, Object> formMap = new HashMap<>();
                 formDecoder.parameters().forEach((key, values) -> {
                     if (!values.isEmpty()) {
-                        formMap.put(key, values.size() == 1 ? values.get(0) : values);
+                        Object value = values.size() == 1 ? parseValue(values.get(0)) : values;
+                        formMap.put(key, value);
+                        context.put(key, value);
                     }
                 });
                 context.put("body", formMap);
@@ -208,11 +198,10 @@ public class PayloadExtractor {
         }
     }
     
-    /**
-     * Parses a string value to appropriate type.
-     */
     private Object parseValue(String value) {
-        // Try to parse as number
+        if ("true".equalsIgnoreCase(value)) return true;
+        if ("false".equalsIgnoreCase(value)) return false;
+        
         try {
             if (value.contains(".")) {
                 return Double.parseDouble(value);
@@ -220,103 +209,12 @@ public class PayloadExtractor {
                 return Long.parseLong(value);
             }
         } catch (NumberFormatException e) {
-            // Not a number
-            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-                return Boolean.parseBoolean(value);
-            }
             return value;
         }
     }
     
-    /**
-     * Extracts path parameters based on the route pattern.
-     */
-    private void extractPathParameters(FullHttpRequest request, String intent, ObjectNode dataNode) {
-        String uri = request.uri().split("\\?")[0];
-        String[] uriParts = uri.split("/");
-        
-        // Get route pattern from conductor method (if available)
-        // For now, use simple ID extraction
-        for (String part : uriParts) {
-            if (part.matches("\\d+")) {
-                dataNode.put("id", Long.parseLong(part));
-            }
-        }
-        
-        // TODO: Extract named path parameters based on route pattern
-        // e.g., /users/{userId}/posts/{postId}
-    }
-    
-    /**
-     * Extracts query parameters from the request.
-     */
-    private void extractQueryParameters(FullHttpRequest request, ObjectNode dataNode) {
-        QueryStringDecoder queryDecoder = new QueryStringDecoder(request.uri());
-        
-        queryDecoder.parameters().forEach((key, values) -> {
-            if (!values.isEmpty()) {
-                if (values.size() == 1) {
-                    // Single value - add as string
-                    String value = values.get(0);
-                    
-                    // Try to parse as number if possible
-                    try {
-                        if (value.contains(".")) {
-                            dataNode.put(key, Double.parseDouble(value));
-                        } else {
-                            dataNode.put(key, Long.parseLong(value));
-                        }
-                    } catch (NumberFormatException e) {
-                        // Not a number, add as string
-                        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
-                            dataNode.put(key, Boolean.parseBoolean(value));
-                        } else {
-                            dataNode.put(key, value);
-                        }
-                    }
-                } else {
-                    // Multiple values - add as array
-                    com.fasterxml.jackson.databind.node.ArrayNode arrayNode = dataNode.putArray(key);
-                    values.forEach(arrayNode::add);
-                }
-            }
-        });
-    }
-    
-    /**
-     * Extracts request body based on content type.
-     */
-    private void extractRequestBody(FullHttpRequest request, ObjectNode dataNode) throws Exception {
-        if (request.content().readableBytes() > 0) {
-            String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
-            
-            if (contentType != null) {
-                if (contentType.contains("application/json")) {
-                    // JSON body
-                    String json = request.content().toString(CharsetUtil.UTF_8);
-                    com.fasterxml.jackson.databind.JsonNode bodyNode = objectMapper.readTree(json);
-                    
-                    if (bodyNode.isObject()) {
-                        // Merge all fields from body into dataNode
-                        bodyNode.fields().forEachRemaining(entry -> 
-                            dataNode.set(entry.getKey(), entry.getValue()));
-                    } else if (bodyNode.isArray()) {
-                        // If body is an array, add it as _body field
-                        dataNode.set("_body", bodyNode);
-                    }
-                } else if (contentType.contains("application/x-www-form-urlencoded")) {
-                    // Form data
-                    String formData = request.content().toString(CharsetUtil.UTF_8);
-                    QueryStringDecoder formDecoder = new QueryStringDecoder("?" + formData, false);
-                    
-                    formDecoder.parameters().forEach((key, values) -> {
-                        if (!values.isEmpty()) {
-                            dataNode.put(key, values.get(0));
-                        }
-                    });
-                }
-                // Add support for multipart/form-data if needed
-            }
-        }
+    private boolean isQueryParam(String key) {
+        // Common query parameter patterns
+        return key.matches("page|size|limit|offset|sort|order|filter|q|query|search");
     }
 }

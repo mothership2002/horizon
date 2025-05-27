@@ -84,8 +84,5 @@ public class AnnotationBasedHttpIntentResolver implements IntentResolver<FullHtt
         return null;
     }
     
-    @Override
-    public boolean canResolve(FullHttpRequest request) {
-        return resolveIntent(request) != null;
-    }
+
 }

@@ -43,11 +43,9 @@ public class ConfigurableHttpProtocolAdapter extends HttpProtocolAdapter {
     protected String doExtractIntent(FullHttpRequest request) {
         // Try custom resolvers first
         for (IntentResolver<FullHttpRequest> resolver : resolvers) {
-            if (resolver.canResolve(request)) {
-                String intent = resolver.resolveIntent(request);
-                if (intent != null) {
-                    return intent;
-                }
+            String intent = resolver.resolveIntent(request);
+            if (intent != null) {
+                return intent;
             }
         }
 
