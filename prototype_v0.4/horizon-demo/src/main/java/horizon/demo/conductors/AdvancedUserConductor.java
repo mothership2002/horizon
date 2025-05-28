@@ -109,7 +109,7 @@ public class AdvancedUserConductor {
     public Map<String, Object> updateUserSettings(
             @PathParam("userId") Long userId,
             @QueryParam("notify") Boolean notify,
-            Map<String, Object> settings  // This will be the request body
+            @RequestBody Map<String, Object> settings  // Explicitly marked as request body
     ) {
         logger.info("Updating settings for user {} - notify: {}, settings: {}", 
                    userId, notify, settings);
@@ -141,7 +141,7 @@ public class AdvancedUserConductor {
     public Object processData(
             @Header("Content-Type") String contentType,
             @Header("Accept") String acceptType,
-            Map<String, Object> data
+            @RequestBody Map<String, Object> data
     ) {
         logger.info("Processing data - Content-Type: {}, Accept: {}", contentType, acceptType);
         

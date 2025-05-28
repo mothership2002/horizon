@@ -1,6 +1,9 @@
 package horizon.core.conductor;
 
 import horizon.core.annotation.*;
+import horizon.core.parameter.ParameterHelper;
+import horizon.core.parameter.ParameterInfo;
+import horizon.core.parameter.ParameterSource;
 import horizon.core.util.JsonUtils;
 
 import java.lang.annotation.Annotation;
@@ -44,34 +47,8 @@ public class ConductorMethod {
     }
 
     private ParameterInfo analyzeParameter(Parameter param, int i) {
-        ParameterInfo info = new ParameterInfo();
-
-        info.parameter = param;
-        info.type = param.getType();
-        info.index = i;
-//        Annotation[] declaredAnnotations = param.getDeclaredAnnotations();
-        // Check for parameter annotations
-        if (param.isAnnotationPresent(PathParam.class)) {
-            PathParam ann = param.getAnnotation(PathParam.class);
-            info.source = ParameterSource.PATH;
-            info.name = Objects.requireNonNull(ann).value();
-        } else if (param.isAnnotationPresent(QueryParam.class)) {
-            QueryParam ann = param.getAnnotation(QueryParam.class);
-            info.source = ParameterSource.QUERY;
-            info.name = Objects.requireNonNull(ann).value();
-            info.required = ann.required();
-            info.defaultValue = ann.defaultValue().isEmpty() ? null : ann.defaultValue();
-        } else if (param.isAnnotationPresent(Header.class)) {
-            Header ann = param.getAnnotation(Header.class);
-            info.source = ParameterSource.HEADER;
-            info.name = Objects.requireNonNull(ann).value();
-            info.required = ann.required();
-        } else {
-            // No annotation - assume it's the main payload/body
-            info.source = ParameterSource.BODY;
-            info.name = param.getName();
-        }
-        return info;
+        ParameterHelper parameterHelper = new ParameterHelper();
+        return parameterHelper.analyze(param, i);
     }
 
     /**
@@ -93,7 +70,7 @@ public class ConductorMethod {
         Object[] args = new Object[parameters.size()];
 
         for (ParameterInfo paramInfo : parameters) {
-            args[paramInfo.index] = resolveParameter(paramInfo, context);
+            args[paramInfo.getIndex()] = resolveParameter(paramInfo, context);
         }
 
         return method.invoke(instance, args);
@@ -105,20 +82,20 @@ public class ConductorMethod {
     private Object resolveParameter(ParameterInfo info, Map<String, Object> context) throws Exception {
         Object value = null;
 
-        switch (info.source) {
+        switch (info.getSource()) {
             case PATH:
-                value = context.get("path." + info.name);
+                value = context.get("path." + info.getName());
                 break;
 
             case QUERY:
-                value = context.get("query." + info.name);
-                if (value == null && info.defaultValue != null) {
-                    value = info.defaultValue;
+                value = context.get("query." + info.getName());
+                if (value == null && info.getDefaultValue() != null) {
+                    value = info.getDefaultValue();
                 }
                 break;
 
             case HEADER:
-                value = context.get("header." + info.name);
+                value = context.get("header." + info.getName());
                 break;
 
             case BODY:
@@ -130,15 +107,15 @@ public class ConductorMethod {
         }
 
         // Validate required parameters
-        if (value == null && info.required) {
+        if (value == null && info.isRequired()) {
             throw new IllegalArgumentException(
-                String.format("Required parameter '%s' is missing", info.name)
+                String.format("Required parameter '%s' is missing", info.getName())
             );
         }
 
         // Convert to target type
-        if (value != null && !info.type.isAssignableFrom(value.getClass())) {
-            value = JsonUtils.convertValue(value, info.type);
+        if (value != null && !info.getType().isAssignableFrom(value.getClass())) {
+            value = JsonUtils.convertValue(value, info.getType());
         }
 
         return value;
@@ -158,7 +135,7 @@ public class ConductorMethod {
     }
 
     public boolean hasAnnotatedParameters() {
-        return parameters.stream().anyMatch(p -> p.source != ParameterSource.BODY);
+        return parameters.stream().anyMatch(p -> p.getSource() != ParameterSource.BODY);
     }
 
     /**
@@ -167,32 +144,10 @@ public class ConductorMethod {
      */
     public Class<?> getBodyParameterType() {
         return parameters.stream()
-            .filter(p -> p.source == ParameterSource.BODY)
-            .map(p -> p.type)
+            .filter(p -> p.getSource() == ParameterSource.BODY)
+            .map(ParameterInfo::getType)
             .findFirst()
             .orElse(null);
     }
 
-    /**
-     * Information about a method parameter.
-     */
-    public static class ParameterInfo {
-        public Parameter parameter;
-        public Class<?> type;
-        public int index;
-        public ParameterSource source;
-        public String name;
-        public boolean required = true;
-        public String defaultValue;
-    }
-
-    /**
-     * Source of parameter value.
-     */
-    public enum ParameterSource {
-        PATH,    // From URL path
-        QUERY,   // From query string
-        HEADER,  // From HTTP header
-        BODY     // From request body
-    }
 }

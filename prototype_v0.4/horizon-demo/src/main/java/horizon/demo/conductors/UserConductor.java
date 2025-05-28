@@ -28,7 +28,7 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.create")
         }
     )
-    public horizon.demo.dto.User createUser(horizon.demo.dto.CreateUserRequest request) {
+    public horizon.demo.dto.User createUser(@RequestBody horizon.demo.dto.CreateUserRequest request) {
         logger.info("Creating user with data: {}", request);
 
         // Extract and validate
@@ -57,7 +57,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users/bulk-create")
     )
-    public horizon.demo.dto.BulkCreateUserResponse bulkCreateUsers(horizon.demo.dto.BulkCreateUserRequest request) {
+    public horizon.demo.dto.BulkCreateUserResponse bulkCreateUsers(@RequestBody horizon.demo.dto.BulkCreateUserRequest request) {
         logger.info("Bulk creating users");
 
         List<horizon.demo.dto.CreateUserRequest> userRequests = request.getUsers();
@@ -84,7 +84,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users/import")
     )
-    public Map<String, Object> importUsers(Map<String, Object> payload) {
+    public Map<String, Object> importUsers(@RequestBody Map<String, Object> payload) {
         logger.info("Importing users from external source");
 
         String source = (String) payload.get("source");
@@ -153,7 +153,7 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.validate")
         }
     )
-    public Map<String, Object> validateUser(Map<String, Object> payload) {
+    public Map<String, Object> validateUser(@RequestBody Map<String, Object> payload) {
         logger.info("Validating user data: {}", payload);
 
         Map<String, Object> errors = new HashMap<>();
