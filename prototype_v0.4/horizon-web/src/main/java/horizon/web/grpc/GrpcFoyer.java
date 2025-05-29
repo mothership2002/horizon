@@ -1,6 +1,6 @@
 package horizon.web.grpc;
 
-import horizon.web.common.AbstractWebFoyer;
+import horizon.web.common.AbstractFoyer;
 import io.grpc.*;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
  * gRPC Foyer - the entry point for gRPC requests into the Horizon framework.
  * Creates a gRPC server that delegates to the Horizon processing pipeline.
  */
-public class GrpcFoyer extends AbstractWebFoyer<GrpcRequest> {
+public class GrpcFoyer extends AbstractFoyer<GrpcRequest> {
     private static final Logger logger = LoggerFactory.getLogger(GrpcFoyer.class);
 
     private Server grpcServer;
@@ -28,12 +28,6 @@ public class GrpcFoyer extends AbstractWebFoyer<GrpcRequest> {
     @Override
     protected String getProtocolName() {
         return "gRPC";
-    }
-
-    @Override
-    protected io.netty.channel.ChannelInitializer<?> createChannelInitializer() {
-        // gRPC uses its own Netty configuration
-        return null;
     }
 
     @Override
