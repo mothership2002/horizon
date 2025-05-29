@@ -49,7 +49,7 @@ public class ProtocolAggregator {
         ProtocolAdapter<I, O> adapter = protocol.createAdapter();
         adapters.put(protocolName, adapter);
         
-        // Set aggregator reference if adapter implements AggregatorAware
+        // Set aggregator reference if the adapter implements AggregatorAware
         if (adapter instanceof horizon.core.protocol.AggregatorAware) {
             ((horizon.core.protocol.AggregatorAware) adapter).setProtocolAggregator(this);
         }
@@ -112,10 +112,10 @@ public class ProtocolAggregator {
      * Starts all registered foyers, beginning to accept requests.
      */
     public void start() {
-        logger.info("Starting Protocol Aggregator with {} protocols", protocols.size());
+        logger.info("Starting Protocol Aggregator with [{}] protocols", protocols.size());
 
         for (Map.Entry<String, Foyer<?>> entry : foyers.entrySet()) {
-            logger.info("Opening foyer for protocol: {}", entry.getKey());
+            logger.info("Opening foyer for protocol: [{}]", entry.getKey());
             entry.getValue().open();
         }
 
@@ -129,11 +129,11 @@ public class ProtocolAggregator {
         logger.info("Stopping Protocol Aggregator");
 
         for (Map.Entry<String, Foyer<?>> entry : foyers.entrySet()) {
-            logger.info("Closing foyer for protocol: {}", entry.getKey());
+            logger.info("Closing foyer for protocol: [{}]", entry.getKey());
             try {
                 entry.getValue().close();
             } catch (Exception e) {
-                logger.error("Error closing foyer for protocol: {}", entry.getKey(), e);
+                logger.error("Error closing foyer for protocol: [{}]", entry.getKey(), e);
             }
         }
 
@@ -141,7 +141,7 @@ public class ProtocolAggregator {
     }
 
     /**
-     * Gets the ConductorMethod for a specific intent.
+     * Gets the ConductorMethod for specific intent.
      * This is used by protocol adapters to determine parameter types.
      */
     public ConductorMethod getConductorMethod(String intent) {
@@ -221,7 +221,7 @@ public class ProtocolAggregator {
         public HorizonContext encounter(I input) {
             logger.debug("Encountering [{}] request", protocol.getName());
 
-            // Extract intent and payload using protocol adapter
+            // Extract intent and payload using a protocol adapter
             String intent = adapter.extractIntent(input);
             Object payload = adapter.extractPayload(input);
 

@@ -1,16 +1,16 @@
-package horizon.demo.dto;
+package horizon.demo.dto.user.request;
 
 /**
- * DTO for deleting a user by ID.
+ * DTO for getting a user by ID.
  */
-public class DeleteUserRequest {
+public class GetUserRequest {
     private Long id;
 
     // Default constructor for Jackson
-    public DeleteUserRequest() {
+    public GetUserRequest() {
     }
 
-    public DeleteUserRequest(Long id) {
+    public GetUserRequest(Long id) {
         this.id = id;
     }
 

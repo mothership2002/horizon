@@ -1,4 +1,4 @@
-package horizon.demo.dto;
+package horizon.demo.dto.user.request;
 
 import java.util.List;
 

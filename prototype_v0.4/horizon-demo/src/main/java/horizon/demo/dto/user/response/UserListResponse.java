@@ -1,4 +1,6 @@
-package horizon.demo.dto;
+package horizon.demo.dto.user.response;
+
+import horizon.demo.dto.user.User;
 
 import java.util.List;
 
@@ -8,7 +10,6 @@ import java.util.List;
 public class UserListResponse {
     private List<User> users;
     private int count;
-    private long timestamp;
 
     // Default constructor for Jackson
     public UserListResponse() {
@@ -17,7 +18,6 @@ public class UserListResponse {
     public UserListResponse(List<User> users) {
         this.users = users;
         this.count = users.size();
-        this.timestamp = System.currentTimeMillis();
     }
 
     // Getters and setters
@@ -35,13 +35,5 @@ public class UserListResponse {
 
     public void setCount(int count) {
         this.count = count;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
     }
 }

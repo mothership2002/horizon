@@ -17,8 +17,8 @@ import java.util.stream.Collectors;
  * User management conductor using the new @ProtocolAccess annotation.
  */
 @Conductor(namespace = "user")
-public class UserConductor {
-    private static final Logger logger = LoggerFactory.getLogger(UserConductor.class);
+public class UserConductorNew {
+    private static final Logger logger = LoggerFactory.getLogger(UserConductorNew.class);
 
     // Simple in-memory storage for demo
     private final Map<Long, Map<String, Object>> users = new ConcurrentHashMap<>();
@@ -156,26 +156,22 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.validate")
         }
     )
-    public Map<String, Object> validateUser(@RequestBody Map<String, Object> payload) {
-        logger.info("Validating user data: {}", payload);
+    public ValidateUserResponse validateUser(@RequestBody ValidateUserRequest request) {
+        logger.info("Validating user data: {}", request);
 
-        Map<String, Object> errors = new HashMap<>();
+        Map<String, String> errors = new HashMap<>();
 
-        String name = (String) payload.get("name");
+        String name = request.getName();
         if (name == null || name.trim().isEmpty()) {
             errors.put("name", "Name is required");
         }
 
-        String email = (String) payload.get("email");
+        String email = request.getEmail();
         if (email == null || !email.contains("@")) {
             errors.put("email", "Valid email is required");
         }
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("valid", errors.isEmpty());
-        response.put("errors", errors);
-
-        return response;
+        return new ValidateUserResponse(errors.isEmpty(), errors);
     }
 
     @Intent("get")

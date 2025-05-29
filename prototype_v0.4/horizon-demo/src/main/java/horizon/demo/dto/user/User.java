@@ -1,4 +1,4 @@
-package horizon.demo.dto;
+package horizon.demo.dto.user;
 
 import java.util.HashMap;
 import java.util.Map;

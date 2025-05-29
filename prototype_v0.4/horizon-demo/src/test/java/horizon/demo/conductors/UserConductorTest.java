@@ -1,6 +1,8 @@
 package horizon.demo.conductors;
 
-import horizon.demo.dto.*;
+import horizon.demo.dto.user.User;
+import horizon.demo.dto.user.request.*;
+import horizon.demo.dto.user.response.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

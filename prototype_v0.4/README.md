@@ -127,9 +127,10 @@ Version 0.4 is a complete rewrite focusing on:
 - ✅ Core Framework
 - ✅ HTTP Protocol Support
 - ✅ WebSocket Protocol Support
-- ✅ Unified Web Module (HTTP + WebSocket)
-- 📋 gRPC Protocol (Planned)
+- ✅ gRPC Protocol Support
+- ✅ Unified Web Module (HTTP + WebSocket + gRPC)
 - 📋 GraphQL Protocol (Planned)
+- 📋 MQTT Protocol (Planned)
 
 ## Getting Started
 

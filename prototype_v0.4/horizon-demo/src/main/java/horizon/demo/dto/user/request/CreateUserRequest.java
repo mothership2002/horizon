@@ -1,4 +1,4 @@
-package horizon.demo.dto;
+package horizon.demo.dto.user.request;
 
 /**
  * DTO for creating a new user.

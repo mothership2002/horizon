@@ -1,4 +1,6 @@
-package horizon.demo.dto;
+package horizon.demo.dto.user.response;
+
+import horizon.demo.dto.user.User;
 
 import java.util.List;
 
@@ -8,7 +10,6 @@ import java.util.List;
 public class SearchUserResponse {
     private String query;
     private List<User> results;
-    private int count;
 
     // Default constructor for Jackson
     public SearchUserResponse() {
@@ -17,7 +18,6 @@ public class SearchUserResponse {
     public SearchUserResponse(String query, List<User> results) {
         this.query = query;
         this.results = results;
-        this.count = results.size();
     }
 
     // Getters and setters
@@ -35,13 +35,5 @@ public class SearchUserResponse {
 
     public void setResults(List<User> results) {
         this.results = results;
-    }
-
-    public int getCount() {
-        return count;
-    }
-
-    public void setCount(int count) {
-        this.count = count;
     }
 }

@@ -1,22 +1,32 @@
-package horizon.demo.dto;
+package horizon.demo.dto.user.request;
 
 /**
- * DTO for validating user data.
+ * DTO for updating an existing user.
  */
-public class ValidateUserRequest {
+public class UpdateUserRequest {
+    private Long id;
     private String name;
     private String email;
 
     // Default constructor for Jackson
-    public ValidateUserRequest() {
+    public UpdateUserRequest() {
     }
 
-    public ValidateUserRequest(String name, String email) {
+    public UpdateUserRequest(Long id, String name, String email) {
+        this.id = id;
         this.name = name;
         this.email = email;
     }
 
     // Getters and setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
     public String getName() {
         return name;
     }

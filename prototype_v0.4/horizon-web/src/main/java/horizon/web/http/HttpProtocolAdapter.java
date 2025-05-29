@@ -19,18 +19,16 @@ import java.util.Map;
  * This class extends AbstractWebProtocolAdapter to provide HTTP-specific functionality.
  * Uses JsonUtils for JSON operations.
  */
-public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequest, FullHttpResponse> 
+public abstract class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequest, FullHttpResponse>
         implements AggregatorAware {
     private final HttpIntentResolver intentResolver = new HttpIntentResolver();
     private PayloadExtractor payloadExtractor;
-    private ProtocolAggregator aggregator;
 
     /**
      * Sets the protocol aggregator for accessing conductor metadata.
      */
     @Override
     public void setProtocolAggregator(ProtocolAggregator aggregator) {
-        this.aggregator = aggregator;
         this.payloadExtractor = new PayloadExtractor(aggregator);
     }
 
@@ -75,7 +73,7 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
             QueryStringDecoder queryDecoder = new QueryStringDecoder(uri);
             queryDecoder.parameters().forEach((key, values) -> {
                 if (!values.isEmpty()) {
-                    payload.put(key, values.size() == 1 ? values.get(0) : values);
+                    payload.put(key, values.size() == 1 ? values.getFirst() : values);
                 }
             });
 
@@ -84,8 +82,7 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
                 String contentType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
                 if (contentType != null && contentType.contains("application/json")) {
                     String json = request.content().toString(CharsetUtil.UTF_8);
-                    Map<String, Object> body = JsonUtils.fromJson(json, Map.class);
-                    payload.putAll(body);
+                    payload.putAll(JsonUtils.fromJson(json, Map.class));
                 }
             }
 
@@ -147,12 +144,11 @@ public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequ
             status = HttpResponseStatus.FORBIDDEN;
         }
 
-        FullHttpResponse response = new DefaultFullHttpResponse(
+        return new DefaultFullHttpResponse(
             HttpVersion.HTTP_1_1,
             status,
             content
         );
-        return response;
     }
 
     @Override
