@@ -1,6 +1,7 @@
 package horizon.web.grpc;
 
 import com.google.protobuf.Any;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 import io.grpc.Metadata;
 import io.grpc.Status;
@@ -14,6 +15,7 @@ public class GrpcResponse {
     private final Status status;
     private final Metadata trailers;
     private final boolean isError;
+    private ByteString rawResponseBytes;
     
     private GrpcResponse(Message message, Status status, Metadata trailers, boolean isError) {
         this.message = message;
@@ -34,6 +36,15 @@ public class GrpcResponse {
      */
     public static GrpcResponse success(Message message, Metadata trailers) {
         return new GrpcResponse(message, Status.OK, trailers, false);
+    }
+    
+    /**
+     * Creates a successful response with raw bytes.
+     */
+    public static GrpcResponse successWithBytes(ByteString bytes) {
+        GrpcResponse response = new GrpcResponse(null, Status.OK, new Metadata(), false);
+        response.rawResponseBytes = bytes;
+        return response;
     }
     
     /**
@@ -61,7 +72,17 @@ public class GrpcResponse {
                     Status.PERMISSION_DENIED.withDescription(throwable.getMessage());
             case UnsupportedOperationException unsupportedOperationException ->
                     Status.UNIMPLEMENTED.withDescription(throwable.getMessage());
-            default -> Status.INTERNAL.withDescription(throwable.getMessage());
+            case IllegalStateException illegalStateException ->
+                    Status.FAILED_PRECONDITION.withDescription(throwable.getMessage());
+            case NullPointerException nullPointerException ->
+                    Status.INVALID_ARGUMENT.withDescription("Null value where not permitted");
+            default -> {
+                if (throwable.getMessage() != null && throwable.getMessage().contains("not found")) {
+                    yield Status.NOT_FOUND.withDescription(throwable.getMessage());
+                } else {
+                    yield Status.INTERNAL.withDescription(throwable.getMessage()).withCause(throwable);
+                }
+            }
         };
         return error(status);
     }
@@ -92,5 +113,19 @@ public class GrpcResponse {
      */
     public Any getAsAny() {
         return message != null ? Any.pack(message) : null;
+    }
+    
+    /**
+     * Gets the raw response bytes.
+     */
+    public ByteString getRawResponseBytes() {
+        return rawResponseBytes;
+    }
+    
+    /**
+     * Sets the raw response bytes.
+     */
+    public void setRawResponseBytes(ByteString rawResponseBytes) {
+        this.rawResponseBytes = rawResponseBytes;
     }
 }

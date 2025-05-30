@@ -1,6 +1,7 @@
 package horizon.web.grpc;
 
 import com.google.protobuf.Any;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
@@ -9,8 +10,22 @@ import io.grpc.MethodDescriptor;
  * Represents a gRPC request in the Horizon framework.
  * Wraps gRPC-specific request information.
  */
-public record GrpcRequest(String serviceName, String methodName, Message message, Metadata headers,
-                          MethodDescriptor<?, ?> methodDescriptor) {
+public class GrpcRequest {
+    private final String serviceName;
+    private final String methodName;
+    private final Message message;
+    private final Metadata headers;
+    private final MethodDescriptor<?, ?> methodDescriptor;
+    private ByteString rawRequestBytes;
+
+    public GrpcRequest(String serviceName, String methodName, Message message, Metadata headers,
+                      MethodDescriptor<?, ?> methodDescriptor) {
+        this.serviceName = serviceName;
+        this.methodName = methodName;
+        this.message = message;
+        this.headers = headers;
+        this.methodDescriptor = methodDescriptor;
+    }
 
     /**
      * Creates a gRPC request from a service call.
@@ -22,6 +37,26 @@ public record GrpcRequest(String serviceName, String methodName, Message message
         String methodName = parts.length > 1 ? parts[1] : fullMethodName;
 
         return new GrpcRequest(serviceName, methodName, message, headers, methodDescriptor);
+    }
+
+    public String serviceName() {
+        return serviceName;
+    }
+
+    public String methodName() {
+        return methodName;
+    }
+
+    public Message message() {
+        return message;
+    }
+
+    public Metadata headers() {
+        return headers;
+    }
+
+    public MethodDescriptor<?, ?> methodDescriptor() {
+        return methodDescriptor;
     }
 
     public String getFullMethodName() {
@@ -41,6 +76,20 @@ public record GrpcRequest(String serviceName, String methodName, Message message
      * Gets the request as a generic Any message.
      */
     public Any getAsAny() {
-        return Any.pack(message);
+        return message != null ? Any.pack(message) : null;
+    }
+
+    /**
+     * Gets the raw request bytes.
+     */
+    public ByteString getRawRequestBytes() {
+        return rawRequestBytes;
+    }
+
+    /**
+     * Sets the raw request bytes.
+     */
+    public void setRawRequestBytes(ByteString rawRequestBytes) {
+        this.rawRequestBytes = rawRequestBytes;
     }
 }

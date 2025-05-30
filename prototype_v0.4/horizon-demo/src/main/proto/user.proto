@@ -1,87 +1,57 @@
 syntax = "proto3";
 
-package horizon.demo.grpc;
+package horizon.demo;
 
-option java_package = "horizon.demo.grpc";
-option java_outer_classname = "UserProto";
+option java_package = "horizon.demo.model";
 option java_multiple_files = true;
 
-// User service definition
+// Service definition
 service UserService {
   // Creates a new user
-  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
   
   // Gets a user by ID
-  rpc GetUser(GetUserRequest) returns (User);
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
   
-  // Updates an existing user
-  rpc UpdateUser(UpdateUserRequest) returns (User);
-  
-  // Lists users with pagination
+  // Lists all users
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
-  
-  // Deletes a user
-  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
-  
-  // Searches users
-  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
 }
 
-// User message
-message User {
-  int64 id = 1;
-  string name = 2;
-  string email = 3;
-  int64 created_at = 4;
-  int64 updated_at = 5;
-}
-
-// Request messages
+// Request/Response messages
 message CreateUserRequest {
   string name = 1;
   string email = 2;
 }
 
-message GetUserRequest {
-  int64 user_id = 1;
+message CreateUserResponse {
+  string user_id = 1;
+  bool success = 2;
+  string message = 3;
 }
 
-message UpdateUserRequest {
-  int64 user_id = 1;
-  string name = 2;
-  string email = 3;
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  bool found = 1;
+  string user_id = 2;
+  string name = 3;
+  string email = 4;
 }
 
 message ListUsersRequest {
-  int32 page = 1;
-  int32 size = 2;
+  int32 limit = 1;
 }
 
-message DeleteUserRequest {
-  int64 user_id = 1;
-}
-
-message SearchUsersRequest {
-  string query = 1;
-  string field = 2;
-  int32 max_results = 3;
-}
-
-// Response messages
 message ListUsersResponse {
-  repeated User users = 1;
-  int32 page = 2;
-  int32 size = 3;
-  int32 total_count = 4;
+  repeated UserInfo users = 1;
+  int32 total = 2;
+  int32 limit = 3;
 }
 
-message DeleteUserResponse {
-  bool deleted = 1;
-  User user = 2;
-}
-
-message SearchUsersResponse {
-  repeated User results = 1;
-  int32 count = 2;
-  string query = 3;
+message UserInfo {
+  string id = 1;
+  string name = 2;
+  string email = 3;
 }
