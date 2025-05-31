@@ -1,92 +1,158 @@
 package horizon.core.parameter;
 
-import horizon.core.annotation.Header;
-import horizon.core.annotation.PathParam;
-import horizon.core.annotation.QueryParam;
-import horizon.core.annotation.RequestBody;
+import horizon.core.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Parameter;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Helper class for analyzing method parameters and their annotations.
+ * Supports both protocol-neutral @Param and legacy HTTP-specific annotations.
+ */
 public class ParameterHelper {
-
+    private static final Logger logger = LoggerFactory.getLogger(ParameterHelper.class);
+    
     private final Map<Class<? extends Annotation>, ParameterAnalyzer> analyzers;
+    private final Map<Class<? extends Annotation>, ParameterAnalyzer> legacyAnalyzers;
 
     public ParameterHelper() {
+        // Protocol-neutral analyzer
         this.analyzers = Map.of(
-                PathParam.class, (parameter, index) -> {
-                    PathParam ann = parameter.getAnnotation(PathParam.class);
-                    return ParameterInfo.builder()
-                            .parameter(parameter)
-                            .type(parameter.getType())
-                            .index(index)
-                            .source(ParameterSource.PATH)
-                            .name(Objects.requireNonNull(ann).value())
-                            .build();
-                },
-                QueryParam.class, (parameter, index) -> {
-                    QueryParam ann = parameter.getAnnotation(QueryParam.class);
-                    return ParameterInfo.builder()
-                            .parameter(parameter)
-                            .type(parameter.getType())
-                            .index(index)
-                            .source(ParameterSource.QUERY)
-                            .name(Objects.requireNonNull(ann).value())
-                            .required(ann.required())
-                            .defaultValue(ann.defaultValue().isEmpty() ? null : ann.defaultValue())
-                            .build();
-                },
-                Header.class, (parameter, index) -> {
-                    Header ann = parameter.getAnnotation(Header.class);
-                    return ParameterInfo.builder()
-                            .parameter(parameter)
-                            .type(parameter.getType())
-                            .index(index)
-                            .source(ParameterSource.HEADER)
-                            .name(Objects.requireNonNull(ann).value())
-                            .required(ann.required())
-                            .build();
-                },
-                RequestBody.class, (parameter, index) -> {
-                    RequestBody ann = parameter.getAnnotation(RequestBody.class);
-                    return ParameterInfo.builder()
-                            .parameter(parameter)
-                            .type(parameter.getType())
-                            .index(index)
-                            .source(ParameterSource.BODY)
-                            .name("body")
-                            .required(Objects.requireNonNull(ann).required())
-                            .build();
-                }
+            Param.class, this::analyzeParam
+        );
+        
+        // Legacy HTTP-specific analyzers (deprecated)
+        this.legacyAnalyzers = Map.of(
+            PathParam.class, this::analyzePathParam,
+            QueryParam.class, this::analyzeQueryParam,
+            Header.class, this::analyzeHeader,
+            RequestBody.class, this::analyzeRequestBody
         );
     }
 
     public ParameterInfo analyze(Parameter parameter, int index) {
-        for (Class<? extends Annotation> annotationType : analyzers.keySet()) {
+        // 1. Check for @Param (protocol-neutral)
+        if (parameter.isAnnotationPresent(Param.class)) {
+            return analyzeParam(parameter, index);
+        }
+        
+        // 2. Check for legacy annotations (deprecated)
+        for (Class<? extends Annotation> annotationType : legacyAnalyzers.keySet()) {
             if (parameter.isAnnotationPresent(annotationType)) {
-                return analyzers.get(annotationType).analyze(parameter, index);
+                logger.warn("@{} is deprecated. Use @Param instead.", 
+                           annotationType.getSimpleName());
+                return legacyAnalyzers.get(annotationType).analyze(parameter, index);
             }
         }
 
-        // No annotation - for backward compatibility, non-primitive types are assumed to be body
+        // 3. No annotation - infer from type
+        return inferParameter(parameter, index);
+    }
+    
+    /**
+     * Analyzes @Param annotation (protocol-neutral).
+     */
+    private ParameterInfo analyzeParam(Parameter parameter, int index) {
+        Param ann = parameter.getAnnotation(Param.class);
+        return ParameterInfo.builder()
+            .parameter(parameter)
+            .type(parameter.getType())
+            .index(index)
+            .source(ParameterSource.PARAM)
+            .name(ann.value())
+            .required(ann.required())
+            .defaultValue(ann.defaultValue().isEmpty() ? null : ann.defaultValue())
+            .hints(ann.hints())
+            .build();
+    }
+    
+    /**
+     * Legacy analyzers for backward compatibility.
+     */
+    private ParameterInfo analyzePathParam(Parameter parameter, int index) {
+        PathParam ann = parameter.getAnnotation(PathParam.class);
+        return ParameterInfo.builder()
+            .parameter(parameter)
+            .type(parameter.getType())
+            .index(index)
+            .source(ParameterSource.PATH)
+            .name(Objects.requireNonNull(ann).value())
+            .hints(new String[]{"path"})
+            .build();
+    }
+    
+    private ParameterInfo analyzeQueryParam(Parameter parameter, int index) {
+        QueryParam ann = parameter.getAnnotation(QueryParam.class);
+        return ParameterInfo.builder()
+            .parameter(parameter)
+            .type(parameter.getType())
+            .index(index)
+            .source(ParameterSource.QUERY)
+            .name(Objects.requireNonNull(ann).value())
+            .required(ann.required())
+            .defaultValue(ann.defaultValue().isEmpty() ? null : ann.defaultValue())
+            .hints(new String[]{"query"})
+            .build();
+    }
+    
+    private ParameterInfo analyzeHeader(Parameter parameter, int index) {
+        Header ann = parameter.getAnnotation(Header.class);
+        return ParameterInfo.builder()
+            .parameter(parameter)
+            .type(parameter.getType())
+            .index(index)
+            .source(ParameterSource.HEADER)
+            .name(Objects.requireNonNull(ann).value())
+            .required(ann.required())
+            .hints(new String[]{"header"})
+            .build();
+    }
+    
+    private ParameterInfo analyzeRequestBody(Parameter parameter, int index) {
+        RequestBody ann = parameter.getAnnotation(RequestBody.class);
+        return ParameterInfo.builder()
+            .parameter(parameter)
+            .type(parameter.getType())
+            .index(index)
+            .source(ParameterSource.BODY)
+            .name("body")
+            .required(Objects.requireNonNull(ann).required())
+            .hints(new String[]{"body"})
+            .build();
+    }
+    
+    /**
+     * Infers parameter info when no annotation is present.
+     * For backward compatibility with non-annotated parameters.
+     */
+    private ParameterInfo inferParameter(Parameter parameter, int index) {
+        // Non-primitive types are assumed to be from body (legacy behavior)
         if (!isPrimitiveOrWrapper(parameter.getType()) 
                 && !parameter.getType().equals(String.class)) {
             return ParameterInfo.builder()
-                    .parameter(parameter)
-                    .type(parameter.getType())
-                    .index(index)
-                    .source(ParameterSource.BODY)
-                    .name("body")
-                    .required(false) // Default to isn't require for an implicit body
-                    .build();
+                .parameter(parameter)
+                .type(parameter.getType())
+                .index(index)
+                .source(ParameterSource.BODY)
+                .name("body")
+                .required(false)
+                .hints(new String[]{"body"})
+                .build();
         } else {
-            // Primitive types without annotation are not allowed
-            throw new IllegalArgumentException(
-                String.format("Parameter '%s' must have an annotation (@PathParam, @QueryParam, @Header, or @RequestBody)",
-                    parameter.getName())
-            );
+            // Primitive types without annotation - use AUTO mode
+            return ParameterInfo.builder()
+                .parameter(parameter)
+                .type(parameter.getType())
+                .index(index)
+                .source(ParameterSource.AUTO)
+                .name(parameter.getName())
+                .required(false)
+                .build();
         }
     }
 

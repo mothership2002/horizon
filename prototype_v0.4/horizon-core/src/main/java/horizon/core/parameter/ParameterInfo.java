@@ -13,6 +13,7 @@ public class ParameterInfo {
     private String name;
     private boolean required = true;
     private String defaultValue;
+    private String[] hints = new String[0];
 
     // Private constructor for builder
     private ParameterInfo() {}
@@ -44,6 +45,10 @@ public class ParameterInfo {
 
     public String getDefaultValue() {
         return defaultValue;
+    }
+    
+    public String[] getHints() {
+        return hints;
     }
 
     // Builder
@@ -90,6 +95,11 @@ public class ParameterInfo {
 
         public Builder defaultValue(String defaultValue) {
             info.defaultValue = defaultValue;
+            return this;
+        }
+        
+        public Builder hints(String[] hints) {
+            info.hints = hints;
             return this;
         }
 

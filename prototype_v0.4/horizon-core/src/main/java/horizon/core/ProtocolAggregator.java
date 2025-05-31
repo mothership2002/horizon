@@ -175,8 +175,8 @@ public class ProtocolAggregator {
                 }
                 
                 // Validate protocol access
-                if (conductor instanceof ConductorScanner.ConductorMethodAdapter adapter) {
-                    if (!accessValidator.hasAccess(protocol, adapter.method)) {
+                if (conductor instanceof ConductorScanner.ConductorMethodAdapter(ConductorMethod method)) {
+                    if (!accessValidator.hasAccess(protocol, method)) {
                         throw new SecurityException(
                             String.format("Protocol '%s' is not allowed to access intent '%s'", protocol, intent)
                         );

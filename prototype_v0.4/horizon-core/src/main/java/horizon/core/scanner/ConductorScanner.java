@@ -8,9 +8,6 @@ import horizon.core.protocol.ProtocolNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -84,20 +81,7 @@ public class ConductorScanner {
                 Class<?> adapterClass = httpAdapter.getClass();
 
                 // Check if the class or any of its interfaces/superclasses has the expected name
-                boolean isConfigurable = false;
-                for (Class<?> iface : adapterClass.getInterfaces()) {
-                    if (iface.getName().equals("horizon.web.http.ConfigurableHttpProtocolAdapter")) {
-                        isConfigurable = true;
-                        break;
-                    }
-                }
-
-                if (!isConfigurable && adapterClass.getSuperclass() != null) {
-                    Class<?> superClass = adapterClass.getSuperclass();
-                    if (superClass.getName().equals("horizon.web.http.ConfigurableHttpProtocolAdapter")) {
-                        isConfigurable = true;
-                    }
-                }
+                boolean isConfigurable = isIsConfigurable(adapterClass);
 
                 if (isConfigurable) {
                     // Create an annotation-based resolver using reflection
@@ -121,7 +105,25 @@ public class ConductorScanner {
             logger.debug("Could not register HTTP mappings: {}", e.getMessage());
         }
     }
-    
+
+    private static boolean isIsConfigurable(Class<?> adapterClass) {
+        boolean isConfigurable = false;
+        for (Class<?> iface : adapterClass.getInterfaces()) {
+            if (iface.getName().equals("horizon.web.http.ConfigurableHttpProtocolAdapter")) {
+                isConfigurable = true;
+                break;
+            }
+        }
+
+        if (!isConfigurable && adapterClass.getSuperclass() != null) {
+            Class<?> superClass = adapterClass.getSuperclass();
+            if (superClass.getName().equals("horizon.web.http.ConfigurableHttpProtocolAdapter")) {
+                isConfigurable = true;
+            }
+        }
+        return isConfigurable;
+    }
+
     /**
      * Registers gRPC mappings for conductor methods.
      */
@@ -259,13 +261,10 @@ public class ConductorScanner {
 
     /**
      * Adapter that wraps a ConductorMethod to implement the Conductor interface.
+     *
+     * @param method public for access validation
      */
-    public static class ConductorMethodAdapter implements horizon.core.Conductor<Object, Object> {
-        public final ConductorMethod method;  // public for access validation
-
-        public ConductorMethodAdapter(ConductorMethod method) {
-            this.method = method;
-        }
+    public record ConductorMethodAdapter(ConductorMethod method) implements horizon.core.Conductor<Object, Object> {
 
         @Override
         public Object conduct(Object payload) {
