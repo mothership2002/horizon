@@ -7,21 +7,29 @@ import java.lang.annotation.*;
  * This annotation makes it explicit which parameter receives the request body,
  * especially useful when multiple parameters are present.
  * 
- * Example:
+ * @deprecated Since 0.4, use {@link Param} for individual field extraction instead.
+ *             Accepting entire request bodies couples code to specific DTOs.
+ * 
+ * Migration example:
  * <pre>
- * @Intent("update")
- * public Result updateUser(
- *     @PathParam("id") Long userId,
- *     @QueryParam("notify") Boolean notify,
- *     @RequestBody UpdateUserRequest request
- * ) {
- *     // request parameter will receive the request body
+ * // Old way (DTO coupling):
+ * @Intent("create")
+ * public User create(@RequestBody CreateUserRequest request) {
+ *     return userService.create(request.getName(), request.getEmail());
+ * }
+ * 
+ * // New way (protocol-neutral):
+ * @Intent("create")
+ * public User create(@Param("name") String name,
+ *                   @Param("email") String email) {
+ *     return userService.create(name, email);
  * }
  * </pre>
  */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
+@Deprecated(since = "0.4", forRemoval = true)
 public @interface RequestBody {
     /**
      * Whether the body is required.

@@ -6,6 +6,7 @@ import horizon.core.protocol.Protocol;
 import horizon.core.protocol.ProtocolAdapter;
 import horizon.core.scanner.ConductorScanner;
 import horizon.core.security.ProtocolAccessValidator;
+import horizon.core.metrics.MetricsCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,19 +25,15 @@ public class ProtocolAggregator {
     private final Map<String, Foyer<?>> foyers = new ConcurrentHashMap<>();
     private final Map<String, ProtocolAdapter<?, ?>> adapters = new ConcurrentHashMap<>();
     private final ConductorRegistry conductorRegistry = new ConductorRegistry();
-    private final Map<String, ConductorMethod> conductorMethods = new ConcurrentHashMap<>();
     private final CentralRendezvous centralRendezvous;
+    private final ProtocolAccessValidator accessValidator = new ProtocolAccessValidator();
 
     public ProtocolAggregator() {
-        this.centralRendezvous = new CentralRendezvous(conductorRegistry, conductorMethods);
+        this.centralRendezvous = new CentralRendezvous();
     }
 
     /**
      * Registers a protocol with this aggregator.
-     * This will create a Foyer for the protocol and connect it to the central Rendezvous.
-     *
-     * @param protocol the protocol to register
-     * @param foyer the foyer for this protocol
      */
     public <I, O> void registerProtocol(Protocol<I, O> protocol, Foyer<I> foyer) {
         String protocolName = protocol.getName();
@@ -63,7 +60,6 @@ public class ProtocolAggregator {
 
     /**
      * Gets the protocol adapter for a specific protocol.
-     * This is used by the ConductorScanner to register protocol-specific mappings.
      */
     @SuppressWarnings("unchecked")
     public <I, O> ProtocolAdapter<I, O> getProtocolAdapter(String protocolName) {
@@ -71,31 +67,15 @@ public class ProtocolAggregator {
     }
 
     /**
-     * Registers a conductor for handling specific intents.
-     *
-     * @param conductor the conductor to register
-     */
-    public void registerConductor(Conductor<?, ?> conductor) {
-        logger.info("Registering conductor for pattern: {}", conductor.getIntentPattern());
-        conductorRegistry.register(conductor);
-    }
-    
-    /**
      * Registers a conductor method.
-     * This is used by the ConductorScanner to register method-level information.
      */
     public void registerConductorMethod(ConductorMethod method) {
-        conductorMethods.put(method.getIntent(), method);
+        conductorRegistry.register(method);
         ConductorMethodCache.getInstance().cache(method.getIntent(), method);
-        registerConductor(new ConductorScanner.ConductorMethodAdapter(method));
     }
 
     /**
-     * Scans the specified package for classes annotated with @Conductor and registers them.
-     * This is a convenient way to register all conductors in a package without manually
-     * instantiating and registering each one.
-     *
-     * @param basePackage the base package to scan
+     * Scans the specified package for classes annotated with @Conductor.
      */
     public void scanConductors(String basePackage) {
         logger.info("Scanning for conductors in package: {}", basePackage);
@@ -109,13 +89,13 @@ public class ProtocolAggregator {
     }
 
     /**
-     * Starts all registered foyers, beginning to accept requests.
+     * Starts all registered foyers.
      */
     public void start() {
-        logger.info("Starting Protocol Aggregator with [{}] protocols", protocols.size());
+        logger.info("Starting Protocol Aggregator with {} protocols", protocols.size());
 
         for (Map.Entry<String, Foyer<?>> entry : foyers.entrySet()) {
-            logger.info("Opening foyer for protocol: [{}]", entry.getKey());
+            logger.info("Opening foyer for protocol: {}", entry.getKey());
             entry.getValue().open();
         }
 
@@ -129,11 +109,11 @@ public class ProtocolAggregator {
         logger.info("Stopping Protocol Aggregator");
 
         for (Map.Entry<String, Foyer<?>> entry : foyers.entrySet()) {
-            logger.info("Closing foyer for protocol: [{}]", entry.getKey());
+            logger.info("Closing foyer for protocol: {}", entry.getKey());
             try {
                 entry.getValue().close();
             } catch (Exception e) {
-                logger.error("Error closing foyer for protocol: [{}]", entry.getKey(), e);
+                logger.error("Error closing foyer for protocol: {}", entry.getKey(), e);
             }
         }
 
@@ -142,76 +122,80 @@ public class ProtocolAggregator {
 
     /**
      * Gets the ConductorMethod for specific intent.
-     * This is used by protocol adapters to determine parameter types.
      */
     public ConductorMethod getConductorMethod(String intent) {
-        return conductorMethods.get(intent);
+        return conductorRegistry.find(intent);
     }
 
     /**
-     * Inner class that handles the central meeting point for all protocols.
+     * Central meeting point for all protocols.
      */
-    private static class CentralRendezvous {
-        private final ConductorRegistry conductorRegistry;
-        private final Map<String, ConductorMethod> conductorMethods;
-        private final ProtocolAccessValidator accessValidator;
-
-        CentralRendezvous(ConductorRegistry conductorRegistry, Map<String, ConductorMethod> conductorMethods) {
-            this.conductorRegistry = conductorRegistry;
-            this.conductorMethods = conductorMethods;
-            this.accessValidator = new ProtocolAccessValidator();
-        }
-
+    private class CentralRendezvous {
+        
         HorizonContext process(HorizonContext context) {
             String intent = context.getIntent();
             String protocol = (String) context.getAttribute("protocol");
             logger.debug("Processing intent: {} from protocol: {} [{}]", intent, protocol, context.getTraceId());
 
+            // Metrics
+            MetricsCollector metrics = MetricsCollector.getInstance();
+            metrics.incrementCounter("requests.total");
+            metrics.incrementCounter("requests.protocol." + protocol);
+            metrics.incrementCounter("requests.intent." + intent);
+            
+            long startTime = System.currentTimeMillis();
+
             try {
-                // Find a conductor for this intent
-                Conductor<Object, Object> conductor = conductorRegistry.find(intent);
-                if (conductor == null) {
+                // Find conductor method for this intent
+                ConductorMethod method = conductorRegistry.find(intent);
+                if (method == null) {
+                    metrics.incrementCounter("errors.intent_not_found");
                     throw new IllegalArgumentException("No conductor found for intent: " + intent);
                 }
                 
                 // Validate protocol access
-                if (conductor instanceof ConductorScanner.ConductorMethodAdapter(ConductorMethod method)) {
-                    if (!accessValidator.hasAccess(protocol, method)) {
-                        throw new SecurityException(
-                            String.format("Protocol '%s' is not allowed to access intent '%s'", protocol, intent)
-                        );
-                    }
+                if (!accessValidator.hasAccess(protocol, method)) {
+                    metrics.incrementCounter("errors.access_denied");
+                    throw new SecurityException(
+                        String.format("Protocol '%s' is not allowed to access intent '%s'", protocol, intent)
+                    );
                 }
 
-                // Conduct the business logic
-                Object result = conductor.conduct(context.getPayload());
+                // Invoke conductor method
+                Object result = method.invoke(context.getPayload());
                 context.setResult(result);
 
+                metrics.incrementCounter("requests.success");
                 logger.debug("Successfully processed intent: {} [{}]", intent, context.getTraceId());
+                
             } catch (Exception e) {
+                metrics.incrementCounter("requests.error");
+                metrics.incrementCounter("errors." + e.getClass().getSimpleName());
                 logger.error("Error processing intent: {} [{}]", intent, context.getTraceId(), e);
                 context.setError(e);
+            } finally {
+                // Record timing
+                long duration = System.currentTimeMillis() - startTime;
+                metrics.recordTiming("request.duration", duration);
+                metrics.recordTiming("request.duration." + intent, duration);
             }
 
             return context;
         }
-
-        public Map<String, ConductorMethod> getConductorMethods() {
-            return conductorMethods;
-        }
     }
 
     /**
-     * Adapts protocol-specific requests to the central rendezvous.
+     * Protocol-specific rendezvous implementation.
      */
-    public static class ProtocolSpecificRendezvous<I, O> implements Rendezvous<I, O> {
+    private static class ProtocolSpecificRendezvous<I, O> implements Rendezvous<I, O> {
         private static final Logger logger = LoggerFactory.getLogger(ProtocolSpecificRendezvous.class);
         
         private final Protocol<I, O> protocol;
         private final ProtocolAdapter<I, O> adapter;
         private final CentralRendezvous centralRendezvous;
 
-        ProtocolSpecificRendezvous(Protocol<I, O> protocol, ProtocolAdapter<I, O> adapter, CentralRendezvous centralRendezvous) {
+        ProtocolSpecificRendezvous(Protocol<I, O> protocol, ProtocolAdapter<I, O> adapter, 
+                                  CentralRendezvous centralRendezvous) {
             this.protocol = protocol;
             this.adapter = adapter;
             this.centralRendezvous = centralRendezvous;
@@ -219,9 +203,9 @@ public class ProtocolAggregator {
 
         @Override
         public HorizonContext encounter(I input) {
-            logger.debug("Encountering [{}] request", protocol.getName());
+            logger.debug("Encountering {} request", protocol.getName());
 
-            // Extract intent and payload using a protocol adapter
+            // Extract intent and payload using protocol adapter
             String intent = adapter.extractIntent(input);
             Object payload = adapter.extractPayload(input);
 

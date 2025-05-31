@@ -5,25 +5,25 @@ import horizon.core.protocol.ProtocolNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
- * Demo conductor showing protocol-neutral parameter handling.
- * This conductor works seamlessly with HTTP, gRPC, and WebSocket.
+ * User management conductor demonstrating protocol-neutral parameter handling.
+ * This single implementation works seamlessly with HTTP, gRPC, and WebSocket.
  */
 @Conductor(namespace = "user")
 @ProtocolAccess({ProtocolNames.HTTP, ProtocolNames.GRPC, ProtocolNames.WEBSOCKET})
-public class GrpcDemoConductor {
-    private static final Logger logger = LoggerFactory.getLogger(GrpcDemoConductor.class);
+public class UserConductor {
+    private static final Logger logger = LoggerFactory.getLogger(UserConductor.class);
     
     // Simple in-memory storage for demo
     private final Map<String, User> users = new ConcurrentHashMap<>();
     
     /**
      * Creates a new user.
-     * Works with all protocols:
+     * Protocol-neutral parameters automatically work with:
      * - HTTP: POST /users with JSON body
      * - gRPC: UserService/CreateUser with message
      * - WebSocket: {intent: "user.create", data: {...}}
@@ -42,23 +42,33 @@ public class GrpcDemoConductor {
     ) {
         logger.info("Creating user: {} ({})", name, email);
         
+        // Validation
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Name is required");
+        }
+        if (email == null || !email.contains("@")) {
+            throw new IllegalArgumentException("Valid email is required");
+        }
+        
         String userId = UUID.randomUUID().toString();
-        User user = new User(userId, name, email);
+        User user = new User(userId, name, email, System.currentTimeMillis());
         users.put(userId, user);
         
         return Map.of(
-            "userId", userId,
-            "success", true,
-            "message", "User created successfully"
+            "userId", user.id(),
+            "name", user.name(),
+            "email", user.email(),
+            "createdAt", user.createdAt(),
+            "success", true
         );
     }
     
     /**
      * Gets a user by ID.
-     * Protocol-neutral parameter handling:
-     * - HTTP: GET /users/{userId} or /users?userId=123
-     * - gRPC: GetUserRequest { user_id: "123" }
-     * - WebSocket: {intent: "user.get", data: {userId: "123"}}
+     * @Param automatically finds userId from:
+     * - HTTP: /users/{userId} or ?userId=xxx
+     * - gRPC: message.user_id or message.userId
+     * - WebSocket: data.userId
      */
     @Intent("get")
     @ProtocolAccess(
@@ -75,7 +85,7 @@ public class GrpcDemoConductor {
         if (user == null) {
             return Map.of(
                 "found", false,
-                "message", "User not found"
+                "message", "User not found: " + userId
             );
         }
         
@@ -83,13 +93,14 @@ public class GrpcDemoConductor {
             "found", true,
             "userId", user.id(),
             "name", user.name(),
-            "email", user.email()
+            "email", user.email(),
+            "createdAt", user.createdAt()
         );
     }
     
     /**
      * Updates a user.
-     * Demonstrates mixed parameter sources.
+     * Demonstrates optional parameters with protocol-neutral handling.
      */
     @Intent("update")
     @ProtocolAccess(
@@ -110,15 +121,16 @@ public class GrpcDemoConductor {
         if (user == null) {
             return Map.of(
                 "success", false,
-                "message", "User not found"
+                "message", "User not found: " + userId
             );
         }
         
-        // Update user
+        // Update user with new values
         User updatedUser = new User(
             userId,
             name != null ? name : user.name(),
-            email != null ? email : user.email()
+            email != null ? email : user.email(),
+            user.createdAt()
         );
         users.put(userId, updatedUser);
         
@@ -134,15 +146,15 @@ public class GrpcDemoConductor {
     }
     
     /**
-     * Lists all users with optional filtering.
-     * Shows how query parameters work across protocols.
+     * Lists users with pagination and search.
+     * Shows how query parameters work across all protocols.
      */
     @Intent("list")
     @ProtocolAccess(
         schema = {
             @ProtocolSchema(protocol = "HTTP", value = "GET /users"),
             @ProtocolSchema(protocol = "gRPC", value = "UserService/ListUsers"),
-            @ProtocolSchema(protocol = "WebSocket", value = "user.list")  
+            @ProtocolSchema(protocol = "WebSocket", value = "user.list")
         }
     )
     public Map<String, Object> listUsers(
@@ -152,16 +164,21 @@ public class GrpcDemoConductor {
     ) {
         logger.info("Listing users - limit: {}, offset: {}, search: {}", limit, offset, search);
         
-        var userList = users.values().stream()
+        List<User> filteredUsers = users.values().stream()
             .filter(user -> search == null || 
                            user.name().toLowerCase().contains(search.toLowerCase()) ||
                            user.email().toLowerCase().contains(search.toLowerCase()))
+            .sorted(Comparator.comparing(User::createdAt).reversed())
             .skip(offset)
             .limit(limit)
+            .toList();
+        
+        List<Map<String, Object>> userList = filteredUsers.stream()
             .map(user -> Map.of(
-                "id", user.id(),
+                "userId", user.id(),
                 "name", user.name(),
-                "email", user.email()
+                "email", user.email(),
+                "createdAt", user.createdAt()
             ))
             .toList();
         
@@ -170,13 +187,13 @@ public class GrpcDemoConductor {
             "total", users.size(),
             "limit", limit,
             "offset", offset,
-            "hasMore", offset + userList.size() < users.size()
+            "hasMore", offset + filteredUsers.size() < users.size()
         );
     }
     
     /**
      * Deletes a user.
-     * Demonstrates header parameter handling across protocols.
+     * Demonstrates header parameter hints for auth tokens.
      */
     @Intent("delete")
     @ProtocolAccess(
@@ -201,7 +218,7 @@ public class GrpcDemoConductor {
         if (removed == null) {
             return Map.of(
                 "success", false,
-                "message", "User not found"
+                "message", "User not found: " + userId
             );
         }
         
@@ -209,14 +226,50 @@ public class GrpcDemoConductor {
             "success", true,
             "message", "User deleted successfully",
             "deletedUser", Map.of(
-                "id", removed.id(),
+                "userId", removed.id(),
                 "name", removed.name()
             )
         );
     }
     
     /**
+     * Validates user data.
+     * Shows how to handle validation across protocols.
+     */
+    @Intent("validate")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = "HTTP", value = "POST /users/validate"),
+            @ProtocolSchema(protocol = "gRPC", value = "UserService/ValidateUser"),
+            @ProtocolSchema(protocol = "WebSocket", value = "user.validate")
+        }
+    )
+    public Map<String, Object> validateUser(
+        @Param(value = "name", required = false) String name,
+        @Param(value = "email", required = false) String email
+    ) {
+        Map<String, String> errors = new HashMap<>();
+        
+        if (name == null || name.trim().isEmpty()) {
+            errors.put("name", "Name is required");
+        } else if (name.length() < 2) {
+            errors.put("name", "Name must be at least 2 characters");
+        }
+        
+        if (email == null || email.trim().isEmpty()) {
+            errors.put("email", "Email is required");
+        } else if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            errors.put("email", "Invalid email format");
+        }
+        
+        return Map.of(
+            "valid", errors.isEmpty(),
+            "errors", errors
+        );
+    }
+    
+    /**
      * Simple user record for internal storage.
      */
-    private record User(String id, String name, String email) {}
+    private record User(String id, String name, String email, long createdAt) {}
 }

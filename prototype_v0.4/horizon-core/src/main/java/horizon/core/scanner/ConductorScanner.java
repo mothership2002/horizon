@@ -77,51 +77,30 @@ public class ConductorScanner {
         try {
             Object httpAdapter = aggregator.getProtocolAdapter(ProtocolNames.HTTP);
             if (httpAdapter != null) {
-                // Check if the adapter is a ConfigurableHttpProtocolAdapter using reflection
-                Class<?> adapterClass = httpAdapter.getClass();
-
-                // Check if the class or any of its interfaces/superclasses has the expected name
-                boolean isConfigurable = isIsConfigurable(adapterClass);
-
-                if (isConfigurable) {
-                    // Create an annotation-based resolver using reflection
-                    Class<?> resolverClass = Class.forName("horizon.web.http.resolver.AnnotationBasedHttpIntentResolver");
-                    Object annotationResolver = resolverClass.getDeclaredConstructor().newInstance();
-
-                    // Register conductor methods
-                    Method registerMethod = resolverClass.getMethod("registerConductorMethod", ConductorMethod.class);
-                    for (ConductorMethod method : methods) {
-                        registerMethod.invoke(annotationResolver, method);
-                    }
-
-                    // Add resolver to adapter
-                    Method addResolverMethod = adapterClass.getMethod("addResolver", resolverClass);
-                    addResolverMethod.invoke(httpAdapter, annotationResolver);
-
-                    logger.debug("Registered {} HTTP mappings", methods.size());
+                // Check if the adapter is configurable
+                if (adapterClass.getName().contains("ConfigurableHttpProtocolAdapter")) {
+                    registerHttpMappingsViaReflection(methods, httpAdapter);
                 }
             }
         } catch (Exception e) {
             logger.debug("Could not register HTTP mappings: {}", e.getMessage());
         }
     }
+    
+    private void registerHttpMappingsViaReflection(List<ConductorMethod> methods, Object httpAdapter) throws Exception {
+        Class<?> resolverClass = Class.forName("horizon.web.http.resolver.AnnotationBasedHttpIntentResolver");
+        Object annotationResolver = resolverClass.getDeclaredConstructor().newInstance();
 
-    private static boolean isIsConfigurable(Class<?> adapterClass) {
-        boolean isConfigurable = false;
-        for (Class<?> iface : adapterClass.getInterfaces()) {
-            if (iface.getName().equals("horizon.web.http.ConfigurableHttpProtocolAdapter")) {
-                isConfigurable = true;
-                break;
-            }
+        Method registerMethod = resolverClass.getMethod("registerConductorMethod", ConductorMethod.class);
+        for (ConductorMethod method : methods) {
+            registerMethod.invoke(annotationResolver, method);
         }
 
-        if (!isConfigurable && adapterClass.getSuperclass() != null) {
-            Class<?> superClass = adapterClass.getSuperclass();
-            if (superClass.getName().equals("horizon.web.http.ConfigurableHttpProtocolAdapter")) {
-                isConfigurable = true;
-            }
-        }
-        return isConfigurable;
+        Method addResolverMethod = httpAdapter.getClass().getMethod("addResolver", 
+            Class.forName("horizon.core.protocol.IntentResolver"));
+        addResolverMethod.invoke(httpAdapter, annotationResolver);
+
+        logger.debug("Registered {} HTTP mappings", methods.size());
     }
 
     /**
@@ -233,6 +212,7 @@ public class ConductorScanner {
                     findClassesInDirectory(directory, packageName, classes);
                 }
             }
+            // TODO: Add support for JAR files when needed
         }
 
         return classes;
@@ -256,32 +236,6 @@ public class ConductorScanner {
                     logger.warn("Failed to load class: {}", className);
                 }
             }
-        }
-    }
-
-    /**
-     * Adapter that wraps a ConductorMethod to implement the Conductor interface.
-     *
-     * @param method public for access validation
-     */
-    public record ConductorMethodAdapter(ConductorMethod method) implements horizon.core.Conductor<Object, Object> {
-
-        @Override
-        public Object conduct(Object payload) {
-            try {
-                return method.invoke(payload);
-            } catch (Exception e) {
-                if (e.getCause() != null) {
-                    // Unwrap the reflection exception
-                    throw new RuntimeException(e.getCause());
-                }
-                throw new RuntimeException("Failed to invoke conductor method", e);
-            }
-        }
-
-        @Override
-        public String getIntentPattern() {
-            return method.getIntent();
         }
     }
 }
