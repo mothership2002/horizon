@@ -1,6 +1,7 @@
 package horizon.demo;
 
 import horizon.core.ProtocolAggregator;
+import horizon.demo.grpc.UserGrpcRegistrar;
 import horizon.web.http.HttpFoyer;
 import horizon.web.http.HttpProtocol;
 import horizon.web.websocket.WebSocketFoyer;
@@ -54,6 +55,9 @@ public class DemoApplication {
 
         // Scan and register conductors
         aggregator.scanConductors("horizon.demo.conductor");
+
+        // Register gRPC message types
+        UserGrpcRegistrar.registerMessageTypes();
 
         // Start the aggregator
         aggregator.start();

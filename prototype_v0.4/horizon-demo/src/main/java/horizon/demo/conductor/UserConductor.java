@@ -2,45 +2,55 @@ package horizon.demo.conductor;
 
 import horizon.core.annotation.*;
 import horizon.core.protocol.ProtocolNames;
+import horizon.demo.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
- * User management conductor demonstrating protocol-neutral parameter handling.
- * This single implementation works seamlessly with HTTP, gRPC, and WebSocket.
+ * User management conductor that works seamlessly with HTTP, WebSocket, and gRPC.
+ * Uses protocol-neutral @Param annotation for true multi-protocol support.
+ * 
+ * This conductor demonstrates how the same business logic can be exposed through
+ * multiple protocols without code duplication.
  */
 @Conductor(namespace = "user")
 @ProtocolAccess({ProtocolNames.HTTP, ProtocolNames.GRPC, ProtocolNames.WEBSOCKET})
 public class UserConductor {
     private static final Logger logger = LoggerFactory.getLogger(UserConductor.class);
-
+    
     // Simple in-memory storage for demo
-    private final Map<String, User> users = new ConcurrentHashMap<>();
-
+    private final Map<String, UserData> users = new ConcurrentHashMap<>();
+    private long idCounter = 1000;
+    
     /**
      * Creates a new user.
-     * Protocol-neutral parameters automatically work with:
-     * - HTTP: POST /users with JSON body
-     * - gRPC: UserService/CreateUser with message
-     * - WebSocket: {intent: "user.create", data: {...}}
+     * Protocol mappings:
+     * - HTTP: POST /users
+     * - gRPC: UserService/CreateUser
+     * - WebSocket: user.create
      */
     @Intent("create")
     @ProtocolAccess(
-            schema = {
-                    @ProtocolSchema(protocol = "HTTP", value = "POST /users"),
-                    @ProtocolSchema(protocol = "gRPC", value = "UserService/CreateUser"),
-                    @ProtocolSchema(protocol = "WebSocket", value = "user.create")
-            }
+        schema = {
+            @ProtocolSchema(protocol = "HTTP", value = "POST /users"),
+            @ProtocolSchema(protocol = "gRPC", value = "UserService/CreateUser"),
+            @ProtocolSchema(protocol = "WebSocket", value = "user.create")
+        }
+    )
+    @GrpcMethod(
+        requestType = CreateUserRequest.class,
+        responseType = CreateUserResponse.class
     )
     public Map<String, Object> createUser(
-            @Param("name") String name,
-            @Param("email") String email
+        @Param("name") String name,
+        @Param("email") String email
     ) {
-        logger.info("Creating user: {} ({})", name, email);
-
+        logger.info("Creating user: name={}, email={}", name, email);
+        
         // Validation
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Name is required");
@@ -48,288 +58,286 @@ public class UserConductor {
         if (email == null || !email.contains("@")) {
             throw new IllegalArgumentException("Valid email is required");
         }
-
-        String userId = UUID.randomUUID().toString();
-        User user = new User(userId, name, email, System.currentTimeMillis());
+        
+        // Create user
+        String userId = String.valueOf(idCounter++);
+        UserData user = new UserData(userId, name, email, System.currentTimeMillis());
         users.put(userId, user);
-
-        return Map.of(
-                "userId", user.id(),
-                "name", user.name(),
-                "email", user.email(),
-                "createdAt", user.createdAt(),
-                "success", true
-        );
+        
+        // Return response compatible with all protocols
+        Map<String, Object> response = new HashMap<>();
+        response.put("user_id", userId);
+        response.put("userId", userId); // Support both naming conventions
+        response.put("success", true);
+        response.put("message", "User created successfully");
+        
+        return response;
     }
-
+    
     /**
      * Gets a user by ID.
-     *
-     * @Param automatically finds userId from:
-     * - HTTP: /users/{userId} or ?userId=xxx
-     * - gRPC: message.user_id or message.userId
-     * - WebSocket: data.userId
+     * Protocol mappings:
+     * - HTTP: GET /users/{userId}
+     * - gRPC: UserService/GetUser
+     * - WebSocket: user.get
      */
     @Intent("get")
     @ProtocolAccess(
-            schema = {
-                    @ProtocolSchema(protocol = "HTTP", value = "GET /users/{userId}"),
-                    @ProtocolSchema(protocol = "gRPC", value = "UserService/GetUser"),
-                    @ProtocolSchema(protocol = "WebSocket", value = "user.get")
-            }
-    )
-    public Map<String, Object> getUser(@Param("userId") String userId) {
-        logger.info("Getting user: {}", userId);
-
-        User user = users.get(userId);
-        if (user == null) {
-            return Map.of(
-                    "found", false,
-                    "message", "User not found: " + userId
-            );
+        schema = {
+            @ProtocolSchema(protocol = "HTTP", value = "GET /users/{userId}"),
+            @ProtocolSchema(protocol = "gRPC", value = "UserService/GetUser"),
+            @ProtocolSchema(protocol = "WebSocket", value = "user.get")
         }
-
-        return Map.of(
-                "found", true,
-                "userId", user.id(),
-                "name", user.name(),
-                "email", user.email(),
-                "createdAt", user.createdAt()
-        );
+    )
+    @GrpcMethod(
+        requestType = GetUserRequest.class,
+        responseType = GetUserResponse.class
+    )
+    public Map<String, Object> getUser(
+        @Param("userId") String userId,
+        @Param(value = "user_id", required = false) String grpcUserId // Support gRPC snake_case
+    ) {
+        // Support both parameter names
+        String id = userId != null ? userId : grpcUserId;
+        logger.info("Getting user: {}", id);
+        
+        UserData user = users.get(id);
+        
+        Map<String, Object> response = new HashMap<>();
+        if (user != null) {
+            response.put("found", true);
+            response.put("user_id", user.id);
+            response.put("userId", user.id); // Both conventions
+            response.put("name", user.name);
+            response.put("email", user.email);
+        } else {
+            response.put("found", false);
+            response.put("message", "User not found: " + id);
+        }
+        
+        return response;
     }
-
+    
     /**
      * Updates a user.
-     * Demonstrates optional parameters with protocol-neutral handling.
+     * Protocol mappings:
+     * - HTTP: PUT /users/{userId}
+     * - gRPC: UserService/UpdateUser
+     * - WebSocket: user.update
      */
     @Intent("update")
     @ProtocolAccess(
-            schema = {
-                    @ProtocolSchema(protocol = "HTTP", value = "PUT /users/{userId}"),
-                    @ProtocolSchema(protocol = "gRPC", value = "UserService/UpdateUser"),
-                    @ProtocolSchema(protocol = "WebSocket", value = "user.update")
-            }
+        schema = {
+            @ProtocolSchema(protocol = "HTTP", value = "PUT /users/{userId}"),
+            @ProtocolSchema(protocol = "gRPC", value = "UserService/UpdateUser"),
+            @ProtocolSchema(protocol = "WebSocket", value = "user.update")
+        }
+    )
+    @GrpcMethod(
+        requestType = UpdateUserRequest.class,
+        responseType = UpdateUserResponse.class
     )
     public Map<String, Object> updateUser(
-            @Param("userId") String userId,
-            @Param(value = "name", required = false) String name,
-            @Param(value = "email", required = false) String email
+        @Param("userId") String userId,
+        @Param(value = "user_id", required = false) String grpcUserId,
+        @Param(value = "name", required = false) String name,
+        @Param(value = "email", required = false) String email
     ) {
-        logger.info("Updating user: {}", userId);
-
-        User user = users.get(userId);
+        String id = userId != null ? userId : grpcUserId;
+        logger.info("Updating user {}: name={}, email={}", id, name, email);
+        
+        UserData user = users.get(id);
         if (user == null) {
-            return Map.of(
-                    "success", false,
-                    "message", "User not found: " + userId
-            );
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "User not found: " + id);
+            return response;
         }
-
-        // Update user with new values
-        User updatedUser = new User(
-                userId,
-                name != null ? name : user.name(),
-                email != null ? email : user.email(),
-                user.createdAt()
-        );
-        users.put(userId, updatedUser);
-
-        return Map.of(
-                "success", true,
-                "message", "User updated successfully",
-                "user", Map.of(
-                        "userId", updatedUser.id(),
-                        "name", updatedUser.name(),
-                        "email", updatedUser.email()
-                )
-        );
+        
+        // Update fields if provided
+        if (name != null && !name.trim().isEmpty()) {
+            user.name = name;
+        }
+        if (email != null && email.contains("@")) {
+            user.email = email;
+        }
+        user.updatedAt = System.currentTimeMillis();
+        
+        // Return updated user info
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "User updated successfully");
+        
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("id", user.id);
+        userInfo.put("name", user.name);
+        userInfo.put("email", user.email);
+        response.put("user", userInfo);
+        
+        return response;
     }
-
-    /**
-     * Lists users with pagination and search.
-     * Shows how query parameters work across all protocols.
-     */
-    @Intent("list")
-    @ProtocolAccess(
-            schema = {
-                    @ProtocolSchema(protocol = "HTTP", value = "GET /users"),
-                    @ProtocolSchema(protocol = "gRPC", value = "UserService/ListUsers"),
-                    @ProtocolSchema(protocol = "WebSocket", value = "user.list")
-            }
-    )
-    public Map<String, Object> listUsers(
-            @Param(value = "limit", defaultValue = "10") int limit,
-            @Param(value = "offset", defaultValue = "0") int offset,
-            @Param(value = "search", required = false) String search
-    ) {
-        logger.info("Listing users - limit: {}, offset: {}, search: {}", limit, offset, search);
-
-        List<User> filteredUsers = users.values().stream()
-                .filter(user -> search == null ||
-                        user.name().toLowerCase().contains(search.toLowerCase()) ||
-                        user.email().toLowerCase().contains(search.toLowerCase()))
-                .sorted(Comparator.comparing(User::createdAt).reversed())
-                .skip(offset)
-                .limit(limit)
-                .toList();
-
-        List<Map<String, Object>> userList = filteredUsers.stream()
-                .map(this::getUserDetailsMap
-                ).toList();
-
-        return Map.of(
-                "users", userList,
-                "total", users.size(),
-                "limit", limit,
-                "offset", offset,
-                "hasMore", offset + filteredUsers.size() < users.size()
-        );
-    }
-
-    private Map<String, Object> getUserDetailsMap(User user) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("userId", user.id());
-        map.put("name", user.name());
-        map.put("email", user.email());
-        map.put("createdAt", user.createdAt());
-        return map;
-    }
-
+    
     /**
      * Deletes a user.
-     * Demonstrates header parameter hints for auth tokens.
+     * Protocol mappings:
+     * - HTTP: DELETE /users/{userId}
+     * - gRPC: UserService/DeleteUser
+     * - WebSocket: user.delete
      */
     @Intent("delete")
     @ProtocolAccess(
-            schema = {
-                    @ProtocolSchema(protocol = "HTTP", value = "DELETE /users/{userId}"),
-                    @ProtocolSchema(protocol = "gRPC", value = "UserService/DeleteUser"),
-                    @ProtocolSchema(protocol = "WebSocket", value = "user.delete")
-            }
+        schema = {
+            @ProtocolSchema(protocol = "HTTP", value = "DELETE /users/{userId}"),
+            @ProtocolSchema(protocol = "gRPC", value = "UserService/DeleteUser"),
+            @ProtocolSchema(protocol = "WebSocket", value = "user.delete")
+        }
+    )
+    @GrpcMethod(
+        requestType = DeleteUserRequest.class,
+        responseType = DeleteUserResponse.class
     )
     public Map<String, Object> deleteUser(
-            @Param("userId") String userId,
-            @Param(value = "authToken", hints = {"header"}, required = false) String authToken
+        @Param("userId") String userId,
+        @Param(value = "user_id", required = false) String grpcUserId,
+        @Param(value = "authToken", hints = {"header"}, required = false) String authToken,
+        @Param(value = "auth_token", required = false) String grpcAuthToken
     ) {
-        logger.info("Deleting user: {} (auth: {})", userId, authToken != null ? "provided" : "none");
-
-        // In real app, validate authToken
-        if (authToken == null || authToken.isEmpty()) {
-            logger.warn("No auth token provided for delete operation");
+        String id = userId != null ? userId : grpcUserId;
+        String token = authToken != null ? authToken : grpcAuthToken;
+        
+        logger.info("Deleting user: {} (auth: {})", id, token != null ? "provided" : "none");
+        
+        UserData removed = users.remove(id);
+        
+        Map<String, Object> response = new HashMap<>();
+        if (removed != null) {
+            response.put("success", true);
+            response.put("message", "User deleted successfully");
+            
+            Map<String, Object> deletedUser = new HashMap<>();
+            deletedUser.put("id", removed.id);
+            deletedUser.put("name", removed.name);
+            deletedUser.put("email", removed.email);
+            response.put("deleted_user", deletedUser);
+            response.put("deletedUser", deletedUser); // Both conventions
+        } else {
+            response.put("success", false);
+            response.put("message", "User not found: " + id);
         }
-
-        User removed = users.remove(userId);
-        if (removed == null) {
-            return Map.of(
-                    "success", false,
-                    "message", "User not found: " + userId
-            );
-        }
-
-        return Map.of(
-                "success", true,
-                "message", "User deleted successfully",
-                "deletedUser", Map.of(
-                        "userId", removed.id(),
-                        "name", removed.name()
-                )
-        );
+        
+        return response;
     }
-
+    
+    /**
+     * Lists users with pagination.
+     * Protocol mappings:
+     * - HTTP: GET /users
+     * - gRPC: UserService/ListUsers
+     * - WebSocket: user.list
+     */
+    @Intent("list")
+    @ProtocolAccess(
+        schema = {
+            @ProtocolSchema(protocol = "HTTP", value = "GET /users"),
+            @ProtocolSchema(protocol = "gRPC", value = "UserService/ListUsers"),
+            @ProtocolSchema(protocol = "WebSocket", value = "user.list")
+        }
+    )
+    @GrpcMethod(
+        requestType = ListUsersRequest.class,
+        responseType = ListUsersResponse.class
+    )
+    public Map<String, Object> listUsers(
+        @Param(value = "limit", defaultValue = "10") int limit,
+        @Param(value = "offset", defaultValue = "0") int offset
+    ) {
+        logger.info("Listing users - limit: {}, offset: {}", limit, offset);
+        
+        List<Map<String, Object>> userList = users.values().stream()
+            .sorted(Comparator.comparing(u -> u.createdAt))
+            .skip(offset)
+            .limit(limit)
+            .map(user -> {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("id", user.id);
+                userInfo.put("name", user.name);
+                userInfo.put("email", user.email);
+                return userInfo;
+            })
+            .collect(Collectors.toList());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("users", userList);
+        response.put("total", users.size());
+        response.put("limit", limit);
+        response.put("offset", offset);
+        response.put("hasMore", offset + userList.size() < users.size());
+        
+        return response;
+    }
+    
     /**
      * Validates user data.
-     * Shows how to handle validation across protocols.
+     * Protocol mappings:
+     * - HTTP: POST /users/validate
+     * - gRPC: UserService/ValidateUser
+     * - WebSocket: user.validate
      */
     @Intent("validate")
     @ProtocolAccess(
-            schema = {
-                    @ProtocolSchema(protocol = "HTTP", value = "POST /users/validate"),
-                    @ProtocolSchema(protocol = "gRPC", value = "UserService/ValidateUser"),
-                    @ProtocolSchema(protocol = "WebSocket", value = "user.validate")
-            }
+        schema = {
+            @ProtocolSchema(protocol = "HTTP", value = "POST /users/validate"),
+            @ProtocolSchema(protocol = "gRPC", value = "UserService/ValidateUser"),
+            @ProtocolSchema(protocol = "WebSocket", value = "user.validate")
+        }
+    )
+    @GrpcMethod(
+        requestType = ValidateUserRequest.class,
+        responseType = ValidateUserResponse.class
     )
     public Map<String, Object> validateUser(
-            @Param(value = "name", required = false) String name,
-            @Param(value = "email", required = false) String email
+        @Param(value = "name", required = false) String name,
+        @Param(value = "email", required = false) String email
     ) {
+        logger.info("Validating user data: name={}, email={}", name, email);
+        
         Map<String, String> errors = new HashMap<>();
-
+        
         if (name == null || name.trim().isEmpty()) {
             errors.put("name", "Name is required");
         } else if (name.length() < 2) {
             errors.put("name", "Name must be at least 2 characters");
         }
-
+        
         if (email == null || email.trim().isEmpty()) {
             errors.put("email", "Email is required");
         } else if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
             errors.put("email", "Invalid email format");
         }
-
-        return Map.of(
-                "valid", errors.isEmpty(),
-                "errors", errors
-        );
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("valid", errors.isEmpty());
+        response.put("errors", errors);
+        
+        return response;
     }
-
+    
     /**
-     * Simple user record for internal storage.
+     * Simple user data holder.
      */
-    public static final class User {
-        private final String id;
-        private final String name;
-        private final String email;
-        private final long createdAt;
-
-        /**
-         *
-         */
-        public User(String id, String name, String email, long createdAt) {
+    private static class UserData {
+        String id;
+        String name;
+        String email;
+        long createdAt;
+        long updatedAt;
+        
+        UserData(String id, String name, String email, long createdAt) {
             this.id = id;
             this.name = name;
             this.email = email;
             this.createdAt = createdAt;
-        }
-
-        public String id() {
-            return id;
-        }
-
-        public String name() {
-            return name;
-        }
-
-        public String email() {
-            return email;
-        }
-
-        public long createdAt() {
-            return createdAt;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) return true;
-            if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (User) obj;
-            return Objects.equals(this.id, that.id) &&
-                    Objects.equals(this.name, that.name) &&
-                    Objects.equals(this.email, that.email) &&
-                    this.createdAt == that.createdAt;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id, name, email, createdAt);
-        }
-
-        @Override
-        public String toString() {
-            return "User[" +
-                    "id=" + id + ", " +
-                    "name=" + name + ", " +
-                    "email=" + email + ", " +
-                    "createdAt=" + createdAt + ']';
+            this.updatedAt = createdAt;
         }
     }
 }
