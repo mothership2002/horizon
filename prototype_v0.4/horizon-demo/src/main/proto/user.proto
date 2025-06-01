@@ -9,12 +9,21 @@ option java_multiple_files = true;
 service UserService {
   // Creates a new user
   rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
-  
+
   // Gets a user by ID
   rpc GetUser(GetUserRequest) returns (GetUserResponse);
-  
+
+  // Updates an existing user
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // Deletes a user
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
   // Lists all users
   rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  // Validates user data
+  rpc ValidateUser(ValidateUserRequest) returns (ValidateUserResponse);
 }
 
 // Request/Response messages
@@ -54,4 +63,40 @@ message UserInfo {
   string id = 1;
   string name = 2;
   string email = 3;
+}
+
+// Update user messages
+message UpdateUserRequest {
+  string user_id = 1;
+  string name = 2;
+  string email = 3;
+}
+
+message UpdateUserResponse {
+  bool success = 1;
+  string message = 2;
+  UserInfo user = 3;
+}
+
+// Delete user messages
+message DeleteUserRequest {
+  string user_id = 1;
+  string auth_token = 2;  // Optional auth token
+}
+
+message DeleteUserResponse {
+  bool success = 1;
+  string message = 2;
+  UserInfo deleted_user = 3;
+}
+
+// Validate user messages
+message ValidateUserRequest {
+  string name = 1;
+  string email = 2;
+}
+
+message ValidateUserResponse {
+  bool valid = 1;
+  map<string, string> errors = 2;
 }
