@@ -78,7 +78,7 @@ public class ConductorScanner {
             Object httpAdapter = aggregator.getProtocolAdapter(ProtocolNames.HTTP);
             if (httpAdapter != null) {
                 // Check if the adapter is configurable
-                if (adapterClass.getName().contains("ConfigurableHttpProtocolAdapter")) {
+                if (httpAdapter.getClass().getName().contains("ConfigurableHttpProtocolAdapter")) {
                     registerHttpMappingsViaReflection(methods, httpAdapter);
                 }
             }

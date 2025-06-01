@@ -15,11 +15,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * Default implementation of HTTP protocol adapter.
  * Adapts HTTP requests and responses to Horizon format.
- * This class extends AbstractWebProtocolAdapter to provide HTTP-specific functionality.
- * Uses JsonUtils for JSON operations.
  */
-public abstract class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequest, FullHttpResponse>
+public class HttpProtocolAdapter extends AbstractWebProtocolAdapter<FullHttpRequest, FullHttpResponse>
         implements AggregatorAware {
     private final HttpIntentResolver intentResolver = new HttpIntentResolver();
     private PayloadExtractor payloadExtractor;

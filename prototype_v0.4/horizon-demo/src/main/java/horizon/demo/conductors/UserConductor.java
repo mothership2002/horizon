@@ -2,9 +2,6 @@ package horizon.demo.conductors;
 
 import horizon.core.annotation.*;
 import horizon.core.protocol.ProtocolNames;
-import horizon.demo.dto.user.User;
-import horizon.demo.dto.user.request.*;
-import horizon.demo.dto.user.response.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +11,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
- * User management conductor using the new @ProtocolAccess annotation.
+ * User management conductor using protocol-neutral @Param annotation.
+ * This replaces the deprecated HTTP-specific annotations.
  */
 @Conductor(namespace = "user")
 public class UserConductor {
@@ -31,12 +29,11 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.create")
         }
     )
-    public User createUser(@RequestBody CreateUserRequest request) {
-        logger.info("Creating user with data: {}", request);
-
-        // Extract and validate
-        String name = request.getName();
-        String email = request.getEmail();
+    public Map<String, Object> createUser(
+            @Param("name") String name,
+            @Param("email") String email
+    ) {
+        logger.info("Creating user: name={}, email={}", name, email);
 
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Name is required");
@@ -45,14 +42,16 @@ public class UserConductor {
             throw new IllegalArgumentException("Valid email is required");
         }
 
-        // Create user
         Long id = idGenerator.incrementAndGet();
-        User user = new User(id, name, email);
+        Map<String, Object> user = new HashMap<>();
+        user.put("id", id);
+        user.put("name", name);
+        user.put("email", email);
+        user.put("createdAt", System.currentTimeMillis());
 
-        // Store
-        users.put(id, user.toMap());
+        users.put(id, user);
 
-        logger.info("User created: {}", user);
+        logger.info("User created with ID: {}", id);
         return user;
     }
 
@@ -60,19 +59,19 @@ public class UserConductor {
     @ProtocolAccess(
         schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users/bulk-create")
     )
-    public BulkCreateUserResponse bulkCreateUsers(@RequestBody BulkCreateUserRequest request) {
-        logger.info("Bulk creating users");
-
-        List<CreateUserRequest> userRequests = request.getUsers();
+    public Map<String, Object> bulkCreateUsers(@Param("users") List<Map<String, Object>> userRequests) {
+        logger.info("Bulk creating {} users", userRequests.size());
 
         if (userRequests == null || userRequests.isEmpty()) {
             throw new IllegalArgumentException("Users list is required");
         }
 
-        List<User> createdUsers = new ArrayList<>();
-        for (CreateUserRequest userRequest : userRequests) {
+        List<Map<String, Object>> createdUsers = new ArrayList<>();
+        for (Map<String, Object> userRequest : userRequests) {
             try {
-                User created = createUser(userRequest);
+                String name = (String) userRequest.get("name");
+                String email = (String) userRequest.get("email");
+                Map<String, Object> created = createUser(name, email);
                 createdUsers.add(created);
             } catch (Exception e) {
                 logger.error("Failed to create user: {}", userRequest, e);
@@ -80,18 +79,21 @@ public class UserConductor {
             }
         }
 
-        return new BulkCreateUserResponse(createdUsers);
+        Map<String, Object> response = new HashMap<>();
+        response.put("created", createdUsers.size());
+        response.put("users", createdUsers);
+        return response;
     }
 
     @Intent("import")
     @ProtocolAccess(
         schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "POST /users/import")
     )
-    public Map<String, Object> importUsers(@RequestBody Map<String, Object> payload) {
-        logger.info("Importing users from external source");
-
-        String source = (String) payload.get("source");
-        String format = (String) payload.get("format");
+    public Map<String, Object> importUsers(
+            @Param("source") String source,
+            @Param("format") String format
+    ) {
+        logger.info("Importing users from source: {}, format: {}", source, format);
 
         // Simulate import logic
         Map<String, Object> response = new HashMap<>();
@@ -110,34 +112,37 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.search")
         }
     )
-    public SearchUserResponse searchUsers(SearchUserRequest request) {
-        String query = request.getQ();
-        String searchBy = request.getSearchBy() != null ? request.getSearchBy() : "name";
-
+    public Map<String, Object> searchUsers(
+            @Param("q") String query,
+            @Param(value = "searchBy", defaultValue = "name") String searchBy
+    ) {
         logger.info("Searching users with query: {} by {}", query, searchBy);
 
         if (query == null || query.trim().isEmpty()) {
             throw new IllegalArgumentException("Search query is required");
         }
 
-        List<User> results = users.values().stream()
+        List<Map<String, Object>> results = users.values().stream()
             .filter(user -> {
                 String value = String.valueOf(user.get(searchBy));
                 return value.toLowerCase().contains(query.toLowerCase());
             })
-            .map(User::fromMap)
             .collect(Collectors.toList());
 
-        return new SearchUserResponse(query, results);
+        Map<String, Object> response = new HashMap<>();
+        response.put("query", query);
+        response.put("results", results);
+        response.put("count", results.size());
+        return response;
     }
 
     @Intent("export")
     @ProtocolAccess(
         schema = @ProtocolSchema(protocol = ProtocolNames.HTTP, value = "GET /users/export")
     )
-    public Map<String, Object> exportUsers(Map<String, Object> payload) {
-        String format = (String) payload.getOrDefault("format", "json");
-
+    public Map<String, Object> exportUsers(
+            @Param(value = "format", defaultValue = "json") String format
+    ) {
         logger.info("Exporting users in format: {}", format);
 
         Map<String, Object> response = new HashMap<>();
@@ -156,17 +161,18 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.validate")
         }
     )
-    public Map<String, Object> validateUser(@RequestBody Map<String, Object> payload) {
-        logger.info("Validating user data: {}", payload);
+    public Map<String, Object> validateUser(
+            @Param(value = "name", required = false) String name,
+            @Param(value = "email", required = false) String email
+    ) {
+        logger.info("Validating user data: name={}, email={}", name, email);
 
-        Map<String, Object> errors = new HashMap<>();
+        Map<String, String> errors = new HashMap<>();
 
-        String name = (String) payload.get("name");
         if (name == null || name.trim().isEmpty()) {
             errors.put("name", "Name is required");
         }
 
-        String email = (String) payload.get("email");
         if (email == null || !email.contains("@")) {
             errors.put("email", "Valid email is required");
         }
@@ -185,8 +191,7 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.get")
         }
     )
-    public User getUser(GetUserRequest request) {
-        Long id = request.getId();
+    public Map<String, Object> getUser(@Param("id") Long id) {
         logger.info("Getting user with id: {}", id);
 
         if (id == null) {
@@ -198,7 +203,7 @@ public class UserConductor {
             throw new IllegalArgumentException("User not found: " + id);
         }
 
-        return User.fromMap(userMap);
+        return userMap;
     }
 
     @Intent("update")
@@ -209,8 +214,11 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.update")
         }
     )
-    public User updateUser(UpdateUserRequest request) {
-        Long id = request.getId();
+    public Map<String, Object> updateUser(
+            @Param("id") Long id,
+            @Param(value = "name", required = false) String name,
+            @Param(value = "email", required = false) String email
+    ) {
         logger.info("Updating user with id: {}", id);
 
         if (id == null) {
@@ -223,12 +231,10 @@ public class UserConductor {
         }
 
         // Update fields if provided
-        String name = request.getName();
         if (name != null) {
             userMap.put("name", name);
         }
 
-        String email = request.getEmail();
         if (email != null) {
             if (!email.contains("@")) {
                 throw new IllegalArgumentException("Valid email is required");
@@ -238,9 +244,8 @@ public class UserConductor {
 
         userMap.put("updatedAt", System.currentTimeMillis());
 
-        User user = User.fromMap(userMap);
-        logger.info("User updated: {}", user);
-        return user;
+        logger.info("User updated: {}", userMap);
+        return userMap;
     }
 
     @Intent("delete")
@@ -250,8 +255,7 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.delete")
         }
     )
-    public DeleteUserResponse deleteUser(DeleteUserRequest request) {
-        Long id = request.getId();
+    public Map<String, Object> deleteUser(@Param("id") Long id) {
         logger.info("Deleting user with id: {}", id);
 
         if (id == null) {
@@ -263,8 +267,10 @@ public class UserConductor {
             throw new IllegalArgumentException("User not found: " + id);
         }
 
-        User user = User.fromMap(userMap);
-        return new DeleteUserResponse(user);
+        Map<String, Object> response = new HashMap<>();
+        response.put("deleted", true);
+        response.put("user", userMap);
+        return response;
     }
 
     @Intent("list")
@@ -274,13 +280,20 @@ public class UserConductor {
             @ProtocolSchema(protocol = ProtocolNames.WEBSOCKET, value = "user.list")
         }
     )
-    public UserListResponse listUsers(Object request) {
-        logger.info("Listing all users");
+    public Map<String, Object> listUsers(
+            @Param(value = "page", defaultValue = "1") Integer page,
+            @Param(value = "size", defaultValue = "10") Integer size
+    ) {
+        logger.info("Listing all users - page: {}, size: {}", page, size);
 
-        List<User> userList = users.values().stream()
-            .map(User::fromMap)
-            .collect(Collectors.toList());
+        List<Map<String, Object>> userList = new ArrayList<>(users.values());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("users", userList);
+        response.put("page", page);
+        response.put("size", size);
+        response.put("total", users.size());
 
-        return new UserListResponse(userList);
+        return response;
     }
 }

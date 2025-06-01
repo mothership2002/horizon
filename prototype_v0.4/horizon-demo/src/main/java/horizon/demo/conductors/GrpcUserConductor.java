@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * User conductor with gRPC support.
  * Demonstrates how the same business logic can be exposed via HTTP, WebSocket, and gRPC.
+ * Now uses protocol-neutral @Param annotation instead of deprecated HTTP-specific annotations.
  */
 @Conductor(namespace = "user")
 public class GrpcUserConductor {
@@ -36,11 +37,11 @@ public class GrpcUserConductor {
             @ProtocolSchema(protocol = ProtocolNames.GRPC, value = "UserService.CreateUser")
         }
     )
-    public Map<String, Object> createUser(@RequestBody Map<String, Object> request) {
-        logger.info("Creating user via gRPC-compatible conductor: {}", request);
-        
-        String name = (String) request.get("name");
-        String email = (String) request.get("email");
+    public Map<String, Object> createUser(
+            @Param("name") String name,
+            @Param("email") String email
+    ) {
+        logger.info("Creating user via gRPC-compatible conductor: name={}, email={}", name, email);
         
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Name is required");
@@ -77,7 +78,7 @@ public class GrpcUserConductor {
             @ProtocolSchema(protocol = ProtocolNames.GRPC, value = "UserService.GetUser")
         }
     )
-    public Map<String, Object> getUser(@PathParam("userId") Long userId) {
+    public Map<String, Object> getUser(@Param("userId") Long userId) {
         logger.info("Getting user by ID: {}", userId);
         
         Map<String, Object> user = users.get(userId);
@@ -104,10 +105,11 @@ public class GrpcUserConductor {
         }
     )
     public Map<String, Object> updateUser(
-            @PathParam("userId") Long userId,
-            @RequestBody Map<String, Object> updates
+            @Param("userId") Long userId,
+            @Param(value = "name", required = false) String name,
+            @Param(value = "email", required = false) String email
     ) {
-        logger.info("Updating user {}: {}", userId, updates);
+        logger.info("Updating user {}: name={}, email={}", userId, name, email);
         
         Map<String, Object> user = users.get(userId);
         if (user == null) {
@@ -115,11 +117,10 @@ public class GrpcUserConductor {
         }
         
         // Update fields
-        if (updates.containsKey("name")) {
-            user.put("name", updates.get("name"));
+        if (name != null) {
+            user.put("name", name);
         }
-        if (updates.containsKey("email")) {
-            String email = (String) updates.get("email");
+        if (email != null) {
             if (!email.contains("@")) {
                 throw new IllegalArgumentException("Valid email is required");
             }
@@ -147,8 +148,8 @@ public class GrpcUserConductor {
         }
     )
     public Map<String, Object> listUsers(
-            @QueryParam(value = "page", defaultValue = "1") Integer page,
-            @QueryParam(value = "size", defaultValue = "10") Integer size
+            @Param(value = "page", defaultValue = "1") Integer page,
+            @Param(value = "size", defaultValue = "10") Integer size
     ) {
         logger.info("Listing users - page: {}, size: {}", page, size);
         
@@ -176,7 +177,7 @@ public class GrpcUserConductor {
             @ProtocolSchema(protocol = ProtocolNames.GRPC, value = "UserService.DeleteUser")
         }
     )
-    public Map<String, Object> deleteUser(@PathParam("userId") Long userId) {
+    public Map<String, Object> deleteUser(@Param("userId") Long userId) {
         logger.info("Deleting user: {}", userId);
         
         Map<String, Object> user = users.remove(userId);
@@ -203,11 +204,11 @@ public class GrpcUserConductor {
             @ProtocolSchema(protocol = ProtocolNames.GRPC, value = "UserService.SearchUsers")
         }
     )
-    public Map<String, Object> searchUsers(@RequestBody Map<String, Object> searchRequest) {
-        String query = (String) searchRequest.get("query");
-        String field = (String) searchRequest.getOrDefault("field", "name");
-        Integer maxResults = (Integer) searchRequest.getOrDefault("maxResults", 10);
-        
+    public Map<String, Object> searchUsers(
+            @Param("query") String query,
+            @Param(value = "field", defaultValue = "name") String field,
+            @Param(value = "maxResults", defaultValue = "10") Integer maxResults
+    ) {
         logger.info("Searching users - query: {}, field: {}, maxResults: {}", 
                    query, field, maxResults);
         
