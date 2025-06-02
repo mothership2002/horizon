@@ -11,10 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * User management conductor demonstrating protocol-neutral parameter handling with DTOs.
- * This single implementation works seamlessly with HTTP, WebSocket, and gRPC.
+ * This single implementation works seamlessly with HTTP and WebSocket.
  */
 @Conductor(namespace = "user")
-@ProtocolAccess({ProtocolNames.HTTP, ProtocolNames.WEBSOCKET, ProtocolNames.GRPC})
+@ProtocolAccess({ProtocolNames.HTTP, ProtocolNames.WEBSOCKET})
 public class UserConductor {
     private static final Logger logger = LoggerFactory.getLogger(UserConductor.class);
 
@@ -31,8 +31,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = {
             @ProtocolSchema(protocol = "HTTP", value = "POST /users"),
-            @ProtocolSchema(protocol = "WebSocket", value = "user.create"),
-            @ProtocolSchema(protocol = "gRPC", value = "UserService/CreateUser")
+            @ProtocolSchema(protocol = "WebSocket", value = "user.create")
         }
     )
     public CreateUserResponse createUser(
@@ -67,8 +66,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = {
             @ProtocolSchema(protocol = "HTTP", value = "POST /users/dto"),
-            @ProtocolSchema(protocol = "WebSocket", value = "user.create.dto"),
-            @ProtocolSchema(protocol = "gRPC", value = "UserService/CreateUserDto")
+            @ProtocolSchema(protocol = "WebSocket", value = "user.create.dto")
         }
     )
     public CreateUserResponse createUserWithDto(CreateUserRequest request) {
@@ -109,8 +107,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = {
             @ProtocolSchema(protocol = "HTTP", value = "GET /users/{userId}"),
-            @ProtocolSchema(protocol = "WebSocket", value = "user.get"),
-            @ProtocolSchema(protocol = "gRPC", value = "UserService/GetUser")
+            @ProtocolSchema(protocol = "WebSocket", value = "user.get")
         }
     )
     public GetUserResponse getUser(@Param("userId") String userId) {
@@ -136,8 +133,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = {
             @ProtocolSchema(protocol = "HTTP", value = "GET /users/test"),
-            @ProtocolSchema(protocol = "WebSocket", value = "user.test.params"),
-            @ProtocolSchema(protocol = "gRPC", value = "UserService/TestParams")
+            @ProtocolSchema(protocol = "WebSocket", value = "user.test.params")
         }
     )
     public Map<String, Object> testParameterResolution(
@@ -167,8 +163,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = {
             @ProtocolSchema(protocol = "HTTP", value = "POST /users/test-complex"),
-            @ProtocolSchema(protocol = "WebSocket", value = "user.test.complex"),
-            @ProtocolSchema(protocol = "gRPC", value = "UserService/TestComplex")
+            @ProtocolSchema(protocol = "WebSocket", value = "user.test.complex")
         }
     )
     public Map<String, Object> testComplexParameters(
@@ -199,8 +194,7 @@ public class UserConductor {
     @ProtocolAccess(
         schema = {
             @ProtocolSchema(protocol = "HTTP", value = "GET /users"),
-            @ProtocolSchema(protocol = "WebSocket", value = "user.list"),
-            @ProtocolSchema(protocol = "gRPC", value = "UserService/ListUsers")
+            @ProtocolSchema(protocol = "WebSocket", value = "user.list")
         }
     )
     public Map<String, Object> listUsers(

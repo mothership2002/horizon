@@ -10,14 +10,4 @@ dependencies {
 
     // JSON support
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.3'
-    
-    // gRPC support
-    implementation 'io.grpc:grpc-netty-shaded:1.58.0'
-    implementation 'io.grpc:grpc-protobuf:1.58.0'
-    implementation 'io.grpc:grpc-stub:1.58.0'
-    implementation 'com.google.protobuf:protobuf-java:3.24.4'
-    implementation 'com.google.protobuf:protobuf-java-util:3.24.4'
-    
-    // For gRPC code generation (optional)
-    compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
 }

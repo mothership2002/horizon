@@ -65,9 +65,6 @@ public class ConductorScanner {
     private void registerProtocolMappings(List<ConductorMethod> methods, ProtocolAggregator aggregator) {
         // Register HTTP mappings if an HTTP adapter is available
         registerHttpMappings(methods, aggregator);
-        
-        // Register gRPC mappings if a gRPC adapter is available
-        registerGrpcMappings(methods, aggregator);
     }
     
     /**
@@ -101,55 +98,6 @@ public class ConductorScanner {
         addResolverMethod.invoke(httpAdapter, annotationResolver);
 
         logger.debug("Registered {} HTTP mappings", methods.size());
-    }
-
-    /**
-     * Registers gRPC mappings for conductor methods.
-     */
-    private void registerGrpcMappings(List<ConductorMethod> methods, ProtocolAggregator aggregator) {
-        try {
-            Object grpcAdapter = aggregator.getProtocolAdapter(ProtocolNames.GRPC);
-            if (grpcAdapter != null) {
-                // Access GrpcServiceRegistry
-                Class<?> registryClass = Class.forName("horizon.web.grpc.GrpcServiceRegistry");
-                Method getInstanceMethod = registryClass.getMethod("getInstance");
-                Object registry = getInstanceMethod.invoke(null);
-                
-                // Register methods that have gRPC protocol access
-                for (ConductorMethod conductorMethod : methods) {
-                    Method method = conductorMethod.getMethod();
-                    
-                    // Check for @ProtocolAccess with gRPC schema
-                    horizon.core.annotation.ProtocolAccess protocolAccess = method.getAnnotation(horizon.core.annotation.ProtocolAccess.class);
-                    if (protocolAccess == null) {
-                        protocolAccess = method.getDeclaringClass().getAnnotation(horizon.core.annotation.ProtocolAccess.class);
-                    }
-                    
-                    if (protocolAccess != null) {
-                        for (horizon.core.annotation.ProtocolSchema schema : protocolAccess.schema()) {
-                            if (ProtocolNames.GRPC.equals(schema.protocol()) && !schema.value().isEmpty()) {
-                                // Parse service/method from schema value
-                                String[] parts = schema.value().split("/");
-                                if (parts.length == 2) {
-                                    String serviceName = parts[0];
-                                    String methodName = parts[1];
-                                    
-                                    // Register in GrpcServiceRegistry
-                                    Method registerMethod = registryClass.getMethod("registerMethod", 
-                                        ConductorMethod.class, String.class, String.class);
-                                    registerMethod.invoke(registry, conductorMethod, serviceName, methodName);
-                                    
-                                    logger.debug("Registered gRPC mapping: {} -> {}", 
-                                        schema.value(), conductorMethod.getIntent());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            logger.debug("Could not register gRPC mappings: {}", e.getMessage());
-        }
     }
 
     /**

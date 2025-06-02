@@ -9,13 +9,10 @@ public final class ProtocolNames {
     public static final String HTTP = "HTTP";
     public static final String WEBSOCKET = "WebSocket";
     
-    // RPC protocols
-    public static final String GRPC = "gRPC";
-    public static final String GRAPHQL = "GraphQL";
-    
-    // Messaging protocols
-    public static final String MQTT = "MQTT";
-    public static final String AMQP = "AMQP";
+    // Future protocols (not yet implemented)
+    // public static final String GRAPHQL = "GraphQL";
+    // public static final String MQTT = "MQTT";
+    // public static final String AMQP = "AMQP";
     
     // Prevent instantiation
     private ProtocolNames() {}
