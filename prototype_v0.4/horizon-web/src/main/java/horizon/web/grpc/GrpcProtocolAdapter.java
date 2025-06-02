@@ -24,7 +24,7 @@ public class GrpcProtocolAdapter extends AbstractWebProtocolAdapter<GrpcRequest,
         implements AggregatorAware {
 
     private static final Logger logger = LoggerFactory.getLogger(GrpcProtocolAdapter.class);
-    
+
     private final GrpcIntentResolver intentResolver = new GrpcIntentResolver();
     private ProtocolAggregator aggregator;
 
@@ -42,30 +42,53 @@ public class GrpcProtocolAdapter extends AbstractWebProtocolAdapter<GrpcRequest,
     protected Object doExtractPayload(GrpcRequest request) {
         try {
             Map<String, Object> context = new HashMap<>();
-            
+
             // Extract from JSON payload (converted from protobuf)
             if (request.getJsonPayload() != null) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> payloadData = JsonUtils.fromJson(request.getJsonPayload(), Map.class);
-                
+
                 // Add payload data to context
                 context.put("body", payloadData);
                 context.putAll(payloadData);  // Also add to root for easier parameter resolution
             }
-            
+
             // Add gRPC metadata
             if (request.getMetadata() != null && !request.getMetadata().isEmpty()) {
                 request.getMetadata().forEach((key, value) -> 
                     context.put("header." + key, value));
             }
-            
+
             // Add gRPC-specific context
             context.put("_grpcService", request.getServiceName());
             context.put("_grpcMethod", request.getMethodName());
             context.put("_protocol", "gRPC");
-            
+
+            // Check if we need to convert to a DTO
+            String intent = intentResolver.resolveIntent(request);
+            if (aggregator != null && intent != null) {
+                horizon.core.conductor.ConductorMethod conductorMethod = aggregator.getConductorMethod(intent);
+                if (conductorMethod != null && !conductorMethod.hasAnnotatedParameters()) {
+                    Class<?> bodyType = conductorMethod.getBodyParameterType();
+                    if (bodyType != null && !Map.class.isAssignableFrom(bodyType)) {
+                        logger.debug("Converting gRPC payload to DTO type: {}", bodyType.getName());
+                        // Get the body or use the entire context as source
+                        Object body = context.get("body");
+                        if (body == null) {
+                            body = new HashMap<>(context);
+                            // Remove metadata and prefixed keys
+                            ((Map<String, Object>) body).entrySet().removeIf(e -> 
+                                e.getKey().startsWith("_") || 
+                                e.getKey().contains(".")
+                            );
+                        }
+                        return JsonUtils.convertValue(body, bodyType);
+                    }
+                }
+            }
+
             return context;
-            
+
         } catch (Exception e) {
             logger.error("Failed to extract payload from gRPC request", e);
             throw new RuntimeException("Failed to extract gRPC payload", e);
@@ -77,10 +100,10 @@ public class GrpcProtocolAdapter extends AbstractWebProtocolAdapter<GrpcRequest,
         try {
             // Convert result to JSON
             String jsonResponse = JsonUtils.toJson(result);
-            
+
             // Create successful response
             return GrpcResponse.success(jsonResponse);
-            
+
         } catch (Exception e) {
             logger.error("Failed to build gRPC response", e);
             return doBuildErrorResponse(e, request);
@@ -90,10 +113,10 @@ public class GrpcProtocolAdapter extends AbstractWebProtocolAdapter<GrpcRequest,
     @Override
     protected GrpcResponse doBuildErrorResponse(Throwable error, GrpcRequest request) {
         logger.error("Building gRPC error response for: {}", error.getMessage());
-        
+
         // Map Java exceptions to gRPC status codes
         GrpcResponse.Status status = mapExceptionToStatus(error);
-        
+
         return GrpcResponse.error(status, error.getMessage());
     }
 
@@ -104,7 +127,7 @@ public class GrpcProtocolAdapter extends AbstractWebProtocolAdapter<GrpcRequest,
             "Internal server error: " + error.getMessage()
         );
     }
-    
+
     /**
      * Maps Java exceptions to gRPC status codes.
      */

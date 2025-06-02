@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package horizon.demo;
 
-option java_package = "horizon.demo.model";
 option java_multiple_files = true;
 
 // Service definition
