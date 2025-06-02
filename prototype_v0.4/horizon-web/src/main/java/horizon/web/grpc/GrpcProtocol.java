@@ -5,8 +5,13 @@ import horizon.core.protocol.ProtocolNames;
 import horizon.web.common.AbstractWebProtocol;
 
 /**
- * gRPC Protocol implementation for Horizon.
- * Enables gRPC services to be exposed through the Horizon framework.
+ * Simplified gRPC Protocol implementation for Horizon.
+ * 
+ * This implementation focuses on:
+ * 1. JSON-based communication (no complex protobuf handling)
+ * 2. DTO-centric approach
+ * 3. Automatic conversion between JSON and Java objects
+ * 4. Universal method handling (no pre-defined services)
  */
 public class GrpcProtocol extends AbstractWebProtocol<GrpcRequest, GrpcResponse> {
     
@@ -34,11 +39,37 @@ public class GrpcProtocol extends AbstractWebProtocol<GrpcRequest, GrpcResponse>
     
     @Override
     public String getDescription() {
-        return "gRPC - A high-performance, open source universal RPC framework";
+        return "gRPC Protocol - JSON-based, DTO-centric, universal method handling";
     }
     
     @Override
     public String getVersion() {
         return "gRPC/1.0";
+    }
+    
+    @Override
+    public boolean supportsSecureConnections() {
+        return true;
+    }
+    
+    /**
+     * Indicates this is a high-performance protocol.
+     */
+    public boolean isHighPerformance() {
+        return true;
+    }
+    
+    /**
+     * Indicates this protocol supports bidirectional streaming.
+     */
+    public boolean supportsBidirectionalStreaming() {
+        return false;  // Not implemented in this simplified version
+    }
+    
+    /**
+     * Gets the content type used by this protocol.
+     */
+    public String getContentType() {
+        return "application/grpc";
     }
 }

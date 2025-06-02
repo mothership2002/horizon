@@ -1,27 +1,35 @@
 package horizon.web.grpc;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Message;
 import horizon.core.HorizonContext;
 import horizon.web.common.AbstractFoyer;
 import io.grpc.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * gRPC Foyer - the entry point for gRPC requests into the Horizon framework.
- * Creates a gRPC server that delegates to the Horizon processing pipeline.
+ * Simplified gRPC Foyer that focuses on JSON-based communication.
+ * 
+ * This implementation:
+ * 1. Accepts any gRPC method call
+ * 2. Converts protobuf to JSON automatically
+ * 3. Routes to Horizon conductors
+ * 4. Converts JSON responses back to protobuf
+ * 
+ * No need for pre-defined .proto files or generated stubs.
  */
 public class GrpcFoyer extends AbstractFoyer<GrpcRequest> {
     private static final Logger logger = LoggerFactory.getLogger(GrpcFoyer.class);
 
     private Server grpcServer;
     private final GrpcConfiguration configuration;
-    private final GrpcMessageConverter messageConverter = new GrpcMessageConverter();
 
     public GrpcFoyer(int port) {
         this(port, GrpcConfiguration.defaultConfig());
@@ -43,51 +51,18 @@ public class GrpcFoyer extends AbstractFoyer<GrpcRequest> {
             logger.info("Opening gRPC Foyer on port {}", port);
 
             try {
-                ServerBuilder<?> serverBuilder;
-
-                // Check if TLS is enabled
-                if (configuration.isTlsEnabled()) {
-                    if (configuration.getCertChainFile() == null || configuration.getPrivateKeyFile() == null) {
-                        throw new IllegalStateException("TLS is enabled but certificate or private key file is missing");
-                    }
-
-                    logger.info("Configuring gRPC server with TLS");
-                    serverBuilder = ServerBuilder.forPort(port)
-                        .useTransportSecurity(
-                            configuration.getCertChainFile(),
-                            configuration.getPrivateKeyFile()
-                        );
-                } else {
-                    logger.info("Configuring gRPC server without TLS (plaintext)");
-                    serverBuilder = ServerBuilder.forPort(port);
-                }
-
-                // Apply configuration
+                ServerBuilder<?> serverBuilder = ServerBuilder.forPort(port);
+                
+                // Apply basic configuration
                 serverBuilder.maxInboundMessageSize(configuration.getMaxInboundMessageSize());
                 serverBuilder.maxInboundMetadataSize(configuration.getMaxInboundMetadataSize());
-
-                // Add interceptors
-                for (ServerInterceptor interceptor : configuration.getInterceptors()) {
-                    serverBuilder.intercept(interceptor);
-                }
-
-                // Add the dynamic Horizon service with generic handler
-                serverBuilder.fallbackHandlerRegistry(new HorizonHandlerRegistry());
-
-                // Add any additional configured services
-                for (BindableService service : configuration.getServices()) {
-                    serverBuilder.addService(service);
-                }
-
+                
+                // Add the universal handler for all methods
+                serverBuilder.fallbackHandlerRegistry(new UniversalHandlerRegistry());
+                
                 grpcServer = serverBuilder.build().start();
 
                 logger.info("gRPC Foyer opened successfully on port {}", port);
-
-                // Add shutdown hook
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    logger.info("Shutting down gRPC server");
-                    GrpcFoyer.this.close();
-                }));
 
             } catch (IOException e) {
                 logger.error("Failed to start gRPC server", e);
@@ -122,60 +97,61 @@ public class GrpcFoyer extends AbstractFoyer<GrpcRequest> {
     }
 
     /**
-     * Handler registry that handles all gRPC methods dynamically.
+     * Universal handler registry that handles all gRPC methods dynamically.
      */
-    private class HorizonHandlerRegistry extends HandlerRegistry {
-
+    private class UniversalHandlerRegistry extends HandlerRegistry {
+        
         @Override
         public ServerMethodDefinition<?, ?> lookupMethod(String methodName, String authority) {
-            logger.debug("Looking up method: {} for authority: {}", methodName, authority);
-
-            // Create a generic method definition for any method
-            MethodDescriptor<ByteString, ByteString> methodDescriptor = MethodDescriptor.<ByteString, ByteString>newBuilder()
+            logger.debug("Looking up gRPC method: {} for authority: {}", methodName, authority);
+            
+            // Create a universal method definition that accepts and returns JSON strings
+            MethodDescriptor<String, String> methodDescriptor = MethodDescriptor.<String, String>newBuilder()
                 .setType(MethodDescriptor.MethodType.UNARY)
                 .setFullMethodName(methodName)
-                .setRequestMarshaller(new ByteStringMarshaller())
-                .setResponseMarshaller(new ByteStringMarshaller())
+                .setRequestMarshaller(new JsonStringMarshaller())
+                .setResponseMarshaller(new JsonStringMarshaller())
                 .build();
-
-            return ServerMethodDefinition.create(methodDescriptor, new GenericUnaryHandler(methodName));
+            
+            return ServerMethodDefinition.create(methodDescriptor, new UniversalMethodHandler(methodName));
         }
     }
 
     /**
-     * Generic handler for unary calls.
+     * Universal method handler that processes any gRPC method.
      */
-    private class GenericUnaryHandler implements ServerCallHandler<ByteString, ByteString> {
+    private class UniversalMethodHandler implements ServerCallHandler<String, String> {
         private final String fullMethodName;
-
-        GenericUnaryHandler(String fullMethodName) {
+        
+        UniversalMethodHandler(String fullMethodName) {
             this.fullMethodName = fullMethodName;
         }
-
+        
         @Override
-        public ServerCall.Listener<ByteString> startCall(ServerCall<ByteString, ByteString> call, Metadata headers) {
-            return new UnaryServerCallListener(call, headers, fullMethodName);
+        public ServerCall.Listener<String> startCall(ServerCall<String, String> call, Metadata headers) {
+            return new UniversalCallListener(call, headers, fullMethodName);
         }
     }
 
     /**
-     * Listener for unary gRPC calls.
+     * Listener for gRPC calls that processes JSON payloads.
      */
-    private class UnaryServerCallListener extends ServerCall.Listener<ByteString> {
-        private final ServerCall<ByteString, ByteString> call;
+    private class UniversalCallListener extends ServerCall.Listener<String> {
+        private final ServerCall<String, String> call;
         private final Metadata headers;
         private final String fullMethodName;
-        private ByteString requestBytes;
+        private String requestJson;
 
-        UnaryServerCallListener(ServerCall<ByteString, ByteString> call, Metadata headers, String fullMethodName) {
+        UniversalCallListener(ServerCall<String, String> call, Metadata headers, String fullMethodName) {
             this.call = call;
             this.headers = headers;
             this.fullMethodName = fullMethodName;
         }
 
         @Override
-        public void onMessage(ByteString message) {
-            this.requestBytes = message;
+        public void onMessage(String message) {
+            this.requestJson = message;
+            logger.debug("Received gRPC message for {}: {}", fullMethodName, message);
         }
 
         @Override
@@ -186,35 +162,19 @@ public class GrpcFoyer extends AbstractFoyer<GrpcRequest> {
             }
 
             try {
-                // Parse service and method names
-                String[] parts = fullMethodName.split("/");
-                String serviceName = parts.length > 1 ? parts[0] : "Unknown";
-                String methodName = parts.length > 1 ? parts[1] : fullMethodName;
-
-                // Try to get message types from registry
-                GrpcServiceRegistry.MessageTypePair messageTypes = 
-                    GrpcServiceRegistry.getInstance().getMessageTypes(fullMethodName);
-
-                Message requestMessage = null;
-                if (messageTypes != null && messageTypes.hasRequestType()) {
-                    try {
-                        requestMessage = messageConverter.bytesToMessage(requestBytes, messageTypes.requestType());
-                    } catch (Exception e) {
-                        logger.warn("Failed to parse request as Protocol Buffer, using raw bytes", e);
-                    }
+                // Extract metadata
+                Map<String, String> metadataMap = extractMetadata(headers);
+                
+                // Create gRPC request
+                GrpcRequest grpcRequest = GrpcRequest.fromFullMethodName(fullMethodName, requestJson);
+                if (!metadataMap.isEmpty()) {
+                    grpcRequest = GrpcRequest.withMetadata(
+                        grpcRequest.getServiceName(),
+                        grpcRequest.getMethodName(),
+                        grpcRequest.getJsonPayload(),
+                        metadataMap
+                    );
                 }
-
-                // Create GrpcRequest
-                GrpcRequest grpcRequest = new GrpcRequest(
-                    serviceName,
-                    methodName,
-                    requestMessage,
-                    headers,
-                    call.getMethodDescriptor()
-                );
-
-                // Add raw bytes for fallback processing
-                grpcRequest.setRawRequestBytes(requestBytes);
 
                 // Process through Horizon
                 HorizonContext context = rendezvous.encounter(grpcRequest);
@@ -222,29 +182,17 @@ public class GrpcFoyer extends AbstractFoyer<GrpcRequest> {
 
                 // Send response
                 call.sendHeaders(new Metadata());
-
+                
                 if (grpcResponse.isSuccess()) {
-                    ByteString responseBytes;
-
-                    if (grpcResponse.getMessage() != null) {
-                        // Convert Protocol Buffer message to bytes
-                        responseBytes = messageConverter.messageToBytes(grpcResponse.getMessage());
-                    } else if (grpcResponse.getRawResponseBytes() != null) {
-                        // Use raw bytes if provided
-                        responseBytes = grpcResponse.getRawResponseBytes();
-                    } else {
-                        // Empty response
-                        responseBytes = ByteString.EMPTY;
-                    }
-
-                    call.sendMessage(responseBytes);
-                    call.close(Status.OK, grpcResponse.getTrailers());
+                    call.sendMessage(grpcResponse.getJsonPayload());
+                    call.close(Status.OK, new Metadata());
                 } else {
-                    call.close(grpcResponse.getStatus(), grpcResponse.getTrailers());
+                    Status grpcStatus = mapToGrpcStatus(grpcResponse.getStatus());
+                    call.close(grpcStatus.withDescription(grpcResponse.getErrorMessage()), new Metadata());
                 }
 
             } catch (Exception e) {
-                logger.error("Error processing gRPC request", e);
+                logger.error("Error processing gRPC request: {}", fullMethodName, e);
                 call.close(Status.INTERNAL.withDescription(e.getMessage()).withCause(e), new Metadata());
             }
         }
@@ -261,21 +209,67 @@ public class GrpcFoyer extends AbstractFoyer<GrpcRequest> {
     }
 
     /**
-     * Simple ByteString marshaller for generic message handling.
+     * Extracts metadata from gRPC headers.
      */
-    private static class ByteStringMarshaller implements MethodDescriptor.Marshaller<ByteString> {
+    private Map<String, String> extractMetadata(Metadata headers) {
+        Map<String, String> metadataMap = new HashMap<>();
+        
+        for (String key : headers.keys()) {
+            if (!key.endsWith("-bin")) {  // Skip binary headers
+                Metadata.Key<String> metadataKey = Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER);
+                String value = headers.get(metadataKey);
+                if (value != null) {
+                    metadataMap.put(key, value);
+                }
+            }
+        }
+        
+        return metadataMap;
+    }
 
+    /**
+     * Maps our simplified status to gRPC status.
+     */
+    private Status mapToGrpcStatus(GrpcResponse.Status status) {
+        return switch (status) {
+            case OK -> Status.OK;
+            case CANCELLED -> Status.CANCELLED;
+            case UNKNOWN -> Status.UNKNOWN;
+            case INVALID_ARGUMENT -> Status.INVALID_ARGUMENT;
+            case DEADLINE_EXCEEDED -> Status.DEADLINE_EXCEEDED;
+            case NOT_FOUND -> Status.NOT_FOUND;
+            case ALREADY_EXISTS -> Status.ALREADY_EXISTS;
+            case PERMISSION_DENIED -> Status.PERMISSION_DENIED;
+            case RESOURCE_EXHAUSTED -> Status.RESOURCE_EXHAUSTED;
+            case FAILED_PRECONDITION -> Status.FAILED_PRECONDITION;
+            case ABORTED -> Status.ABORTED;
+            case OUT_OF_RANGE -> Status.OUT_OF_RANGE;
+            case UNIMPLEMENTED -> Status.UNIMPLEMENTED;
+            case INTERNAL -> Status.INTERNAL;
+            case UNAVAILABLE -> Status.UNAVAILABLE;
+        };
+    }
+
+    /**
+     * Simple JSON string marshaller for gRPC.
+     */
+    private static class JsonStringMarshaller implements MethodDescriptor.Marshaller<String> {
+        
         @Override
-        public InputStream stream(ByteString value) {
-            return value.newInput();
+        public InputStream stream(String value) {
+            if (value == null) {
+                value = "{}";
+            }
+            return new ByteArrayInputStream(value.getBytes(StandardCharsets.UTF_8));
         }
 
         @Override
-        public ByteString parse(InputStream stream) {
+        public String parse(InputStream stream) {
             try {
-                return ByteString.readFrom(stream);
+                return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to parse ByteString", e);
+                logger.error("Failed to parse JSON string from gRPC stream", e);
+                return "{}";
             }
         }
     }

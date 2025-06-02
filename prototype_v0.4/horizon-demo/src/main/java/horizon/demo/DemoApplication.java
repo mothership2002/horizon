@@ -1,21 +1,18 @@
 package horizon.demo;
 
 import horizon.core.ProtocolAggregator;
-import horizon.demo.grpc.UserGrpcRegistrar;
 import horizon.web.http.HttpFoyer;
 import horizon.web.http.HttpProtocol;
 import horizon.web.websocket.WebSocketFoyer;
 import horizon.web.websocket.WebSocketProtocol;
-import horizon.web.grpc.GrpcConfiguration;
 import horizon.web.grpc.GrpcFoyer;
 import horizon.web.grpc.GrpcProtocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.File;
 
 /**
  * Horizon Framework Demo Application.
- * Demonstrates protocol-neutral development with HTTP, WebSocket, and gRPC.
+ * Demonstrates protocol-neutral development with HTTP, WebSocket, and simplified gRPC.
  */
 public class DemoApplication {
     private static final Logger logger = LoggerFactory.getLogger(DemoApplication.class);
@@ -25,7 +22,7 @@ public class DemoApplication {
         System.setProperty("sun.stdout.encoding", "UTF-8");
         System.setProperty("sun.stderr.encoding", "UTF-8");
 
-        logger.info("Starting Horizon Framework v0.4 Demo");
+        logger.info("Starting Horizon Framework v0.4 Demo with Simplified gRPC");
 
         // Create the Protocol Aggregator
         ProtocolAggregator aggregator = new ProtocolAggregator();
@@ -33,31 +30,12 @@ public class DemoApplication {
         // Register protocols
         aggregator.registerProtocol(new HttpProtocol(), new HttpFoyer(8080));
         aggregator.registerProtocol(new WebSocketProtocol(), new WebSocketFoyer(8081));
-
-        // Configure gRPC with explicit plaintext setting (no TLS)
-        GrpcConfiguration grpcConfig = GrpcConfiguration.defaultConfig()
-            .disableTls(); // Explicitly disable TLS for plaintext connections
-
-        // Example of how to enable TLS (commented out - requires actual certificate files)
-        /*
-        // For production, enable TLS with your certificate and private key files
-        File certChainFile = new File("path/to/certificate.pem");
-        File privateKeyFile = new File("path/to/private-key.pem");
-
-        GrpcConfiguration secureGrpcConfig = GrpcConfiguration.defaultConfig()
-            .enableTls(certChainFile, privateKeyFile);
-
-        aggregator.registerProtocol(new GrpcProtocol(), new GrpcFoyer(9090, secureGrpcConfig));
-        */
-
-        // Register gRPC with plaintext configuration
-        aggregator.registerProtocol(new GrpcProtocol(), new GrpcFoyer(9090, grpcConfig));
+        
+        // Register simplified gRPC protocol
+        aggregator.registerProtocol(new GrpcProtocol(), new GrpcFoyer(9090));
 
         // Scan and register conductors
         aggregator.scanConductors("horizon.demo.conductor");
-
-        // Register gRPC message types
-        UserGrpcRegistrar.registerMessageTypes();
 
         // Start the aggregator
         aggregator.start();
@@ -82,21 +60,22 @@ public class DemoApplication {
         System.out.println("""
 
             +==================================================================+
-            |        Horizon Framework v0.4 - Protocol Neutral                 |
+            |     Horizon Framework v0.4 - Simplified Protocol Neutral        |
             +==================================================================+
             |                                                                  |
             |  🚀 Features:                                                    |
             |  • Protocol-neutral @Param annotation                            |
             |  • Smart parameter resolution across all protocols               |
             |  • One business logic, multiple protocols                        |
-            |  • Automatic DTO conversion                                      |
+            |  • DTO-based communication                                       |
+            |  • Simplified gRPC (JSON-based, no .proto files needed)         |
             |                                                                  |
             +==================================================================+
             | HTTP (port 8080):                                                |
             |   POST   /users              -> user.create                      |
             |   GET    /users/{userId}     -> user.get                         |
-            |   PUT    /users/{userId}     -> user.update                      |
-            |   DELETE /users/{userId}     -> user.delete                      |
+            |   GET    /users/test         -> user.test.params                 |
+            |   POST   /users/test-complex -> user.test.complex                |
             |   GET    /users              -> user.list                        |
             |                                                                  |
             | WebSocket (port 8081):                                           |
@@ -106,15 +85,21 @@ public class DemoApplication {
             | gRPC (port 9090):                                                |
             |   UserService/CreateUser     -> user.create                      |
             |   UserService/GetUser        -> user.get                         |
-            |   UserService/UpdateUser     -> user.update                      |
-            |   UserService/DeleteUser     -> user.delete                      |
+            |   UserService/TestParams     -> user.test.params                 |
+            |   UserService/TestComplex    -> user.test.complex                |
             |   UserService/ListUsers      -> user.list                        |
             |                                                                  |
             +==================================================================+
             |  The SAME @Conductor handles ALL protocols! 🎉                   |
+            |  Parameter Resolution Testing Available on All Protocols!        |
             +==================================================================+
 
             Ready to accept requests...
+            
+            Test parameter resolution:
+            • HTTP GET /users/test?name=John&age=30&active=true&tags=admin,user
+            • WebSocket: {"intent": "user.test.params", "data": {"name": "John", "age": 30}}
+            • gRPC: UserService/TestParams with JSON payload
             """);
     }
 }

@@ -1,131 +1,112 @@
 package horizon.web.grpc;
 
-import com.google.protobuf.Any;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Message;
-import io.grpc.Metadata;
-import io.grpc.Status;
-
 /**
- * Represents a gRPC response in the Horizon framework.
- * Can represent both successful responses and errors.
+ * Simplified gRPC response representation focused on DTO-based communication.
+ * 
+ * Focuses on essential response data:
+ * 1. Success/error status
+ * 2. JSON payload for successful responses
+ * 3. Error message for failed responses
  */
 public class GrpcResponse {
-    private final Message message;
+    private final boolean success;
+    private final String jsonPayload;
     private final Status status;
-    private final Metadata trailers;
-    private final boolean isError;
-    private ByteString rawResponseBytes;
-    
-    private GrpcResponse(Message message, Status status, Metadata trailers, boolean isError) {
-        this.message = message;
+    private final String errorMessage;
+
+    private GrpcResponse(boolean success, String jsonPayload, Status status, String errorMessage) {
+        this.success = success;
+        this.jsonPayload = jsonPayload;
         this.status = status;
-        this.trailers = trailers != null ? trailers : new Metadata();
-        this.isError = isError;
+        this.errorMessage = errorMessage;
     }
-    
+
     /**
-     * Creates a successful response.
+     * Creates a successful response with JSON payload.
      */
-    public static GrpcResponse success(Message message) {
-        return new GrpcResponse(message, Status.OK, new Metadata(), false);
+    public static GrpcResponse success(String jsonPayload) {
+        return new GrpcResponse(true, jsonPayload, Status.OK, null);
     }
-    
+
     /**
-     * Creates a successful response with metadata.
+     * Creates an error response with status and message.
      */
-    public static GrpcResponse success(Message message, Metadata trailers) {
-        return new GrpcResponse(message, Status.OK, trailers, false);
+    public static GrpcResponse error(Status status, String errorMessage) {
+        return new GrpcResponse(false, null, status, errorMessage);
     }
-    
-    /**
-     * Creates a successful response with raw bytes.
-     */
-    public static GrpcResponse successWithBytes(ByteString bytes) {
-        GrpcResponse response = new GrpcResponse(null, Status.OK, new Metadata(), false);
-        response.rawResponseBytes = bytes;
-        return response;
-    }
-    
-    /**
-     * Creates an error response.
-     */
-    public static GrpcResponse error(Status status) {
-        return new GrpcResponse(null, status, new Metadata(), true);
-    }
-    
-    /**
-     * Creates an error response with metadata.
-     */
-    public static GrpcResponse error(Status status, Metadata trailers) {
-        return new GrpcResponse(null, status, trailers, true);
-    }
-    
+
     /**
      * Creates an error response from an exception.
      */
     public static GrpcResponse error(Throwable throwable) {
-        Status status = switch (throwable) {
-            case IllegalArgumentException illegalArgumentException ->
-                    Status.INVALID_ARGUMENT.withDescription(throwable.getMessage());
-            case SecurityException securityException ->
-                    Status.PERMISSION_DENIED.withDescription(throwable.getMessage());
-            case UnsupportedOperationException unsupportedOperationException ->
-                    Status.UNIMPLEMENTED.withDescription(throwable.getMessage());
-            case IllegalStateException illegalStateException ->
-                    Status.FAILED_PRECONDITION.withDescription(throwable.getMessage());
-            case NullPointerException nullPointerException ->
-                    Status.INVALID_ARGUMENT.withDescription("Null value where not permitted");
-            default -> {
-                if (throwable.getMessage() != null && throwable.getMessage().contains("not found")) {
-                    yield Status.NOT_FOUND.withDescription(throwable.getMessage());
-                } else {
-                    yield Status.INTERNAL.withDescription(throwable.getMessage()).withCause(throwable);
-                }
-            }
-        };
-        return error(status);
+        Status status = Status.INTERNAL;
+        if (throwable instanceof IllegalArgumentException) {
+            status = Status.INVALID_ARGUMENT;
+        } else if (throwable instanceof SecurityException) {
+            status = Status.PERMISSION_DENIED;
+        } else if (throwable.getMessage() != null && throwable.getMessage().toLowerCase().contains("not found")) {
+            status = Status.NOT_FOUND;
+        }
+        
+        return error(status, throwable.getMessage());
     }
-    
+
     // Getters
-    public Message getMessage() {
-        return message;
+    public boolean isSuccess() {
+        return success;
     }
-    
+
+    public String getJsonPayload() {
+        return jsonPayload;
+    }
+
     public Status getStatus() {
         return status;
     }
-    
-    public Metadata getTrailers() {
-        return trailers;
+
+    public String getErrorMessage() {
+        return errorMessage;
     }
-    
-    public boolean isError() {
-        return isError;
-    }
-    
-    public boolean isSuccess() {
-        return !isError;
-    }
-    
+
     /**
-     * Gets the response as a generic Any message.
+     * Simplified gRPC status codes.
+     * Only the most commonly used ones for basic error handling.
      */
-    public Any getAsAny() {
-        return message != null ? Any.pack(message) : null;
+    public enum Status {
+        OK(0),
+        CANCELLED(1),
+        UNKNOWN(2),
+        INVALID_ARGUMENT(3),
+        DEADLINE_EXCEEDED(4),
+        NOT_FOUND(5),
+        ALREADY_EXISTS(6),
+        PERMISSION_DENIED(7),
+        RESOURCE_EXHAUSTED(8),
+        FAILED_PRECONDITION(9),
+        ABORTED(10),
+        OUT_OF_RANGE(11),
+        UNIMPLEMENTED(12),
+        INTERNAL(13),
+        UNAVAILABLE(14);
+
+        private final int code;
+
+        Status(int code) {
+            this.code = code;
+        }
+
+        public int getCode() {
+            return code;
+        }
     }
-    
-    /**
-     * Gets the raw response bytes.
-     */
-    public ByteString getRawResponseBytes() {
-        return rawResponseBytes;
-    }
-    
-    /**
-     * Sets the raw response bytes.
-     */
-    public void setRawResponseBytes(ByteString rawResponseBytes) {
-        this.rawResponseBytes = rawResponseBytes;
+
+    @Override
+    public String toString() {
+        return "GrpcResponse{" +
+                "success=" + success +
+                ", jsonPayload='" + (jsonPayload != null ? jsonPayload.substring(0, Math.min(100, jsonPayload.length())) + "..." : "null") + '\'' +
+                ", status=" + status +
+                ", errorMessage='" + errorMessage + '\'' +
+                '}';
     }
 }

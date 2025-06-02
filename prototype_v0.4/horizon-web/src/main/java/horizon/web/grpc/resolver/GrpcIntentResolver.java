@@ -17,8 +17,8 @@ public class GrpcIntentResolver implements IntentResolver<GrpcRequest> {
     
     @Override
     public String resolveIntent(GrpcRequest request) {
-        String serviceName = normalizeServiceName(request.serviceName());
-        String methodName = normalizeMethodName(request.methodName());
+        String serviceName = normalizeServiceName(request.getServiceName());
+        String methodName = normalizeMethodName(request.getMethodName());
         
         return serviceName + "." + methodName;
     }
