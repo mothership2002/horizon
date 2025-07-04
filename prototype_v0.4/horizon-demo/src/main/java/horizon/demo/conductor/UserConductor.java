@@ -216,7 +216,8 @@ public class UserConductor {
             "total", users.size(),
             "limit", limit,
             "offset", offset,
-            "hasMore", offset + users.size() < users.size()
+            // hasMore should be based on the requested window (offset + limit)
+            "hasMore", offset + limit < users.size()
         );
     }
 
